@@ -150,6 +150,10 @@ struct TopRow: View {
         let matte = Matte(scheme: scheme)
         HStack(spacing: 0) {
             HStack(spacing: 14) {
+                IconButton(symbol: "speaker.wave.2", color: store.activeSlider == .volume ? matte.primary : matte.secondary, help: "Volume") {
+                    store.volume = SystemControls.volume()
+                    store.activeSlider = store.activeSlider == .volume ? nil : .volume
+                }
                 IconButton(symbol: "circle.lefthalf.filled", color: matte.secondary, help: "Switch the Mac between dark and light") {
                     SystemControls.toggleDarkMode()
                 }
@@ -187,6 +191,9 @@ struct WidgetsView: View {
     var body: some View {
         let matte = Matte(scheme: scheme)
         VStack(spacing: 0) {
+            if let slider = store.activeSlider {
+                SliderRow(store: store, kind: slider).frame(height: 32)
+            }
             HStack(spacing: 8) {
                 MusicCard(store: store)
                 WeatherCard(weather: store.weather)
@@ -197,6 +204,22 @@ struct WidgetsView: View {
                 LyricsView(store: store, matte: matte).frame(height: 50)
             }
         }
+    }
+}
+
+struct SliderRow: View {
+    @ObservedObject var store: NotchStore
+    let kind: ControlSlider
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: kind == .volume ? "speaker.fill" : "sun.min.fill")
+                .font(.system(size: 11)).foregroundStyle(Matte(scheme: scheme).secondary).frame(width: 16)
+            Slider(value: Binding(get: { store.volume }, set: { store.volume = $0; SystemControls.setVolume($0) }), in: 0...1)
+                .controlSize(.small)
+        }
+        .padding(.horizontal, 6)
     }
 }
 

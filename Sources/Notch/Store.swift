@@ -3,6 +3,7 @@ import Combine
 import NotchCore
 
 enum Surface: Equatable { case idle, wings, peek, widgets, request, done }
+enum ControlSlider: Equatable { case volume, brightness }
 
 struct Track: Equatable {
     var id: String
@@ -31,6 +32,8 @@ final class NotchStore: ObservableObject {
     @Published var hovering = false
     /// The mouse has rested on the notch but hasn't stayed long enough to open it.
     @Published var nudged = false
+    @Published var activeSlider: ControlSlider?
+    @Published var volume: Float = 0
 
     @Published var track: Track?
     @Published var isPlaying = false
@@ -60,7 +63,7 @@ final class NotchStore: ObservableObject {
         case .wings: return CGSize(width: notchWidth + 84 + 12 * nudge, height: notchHeight + 8 * nudge)
         case .peek: return CGSize(width: max(notchWidth + 40, 240) + 12 * nudge, height: notchHeight + 34 + 8 * nudge)
         case .widgets:
-            let slider: CGFloat = 0
+            let slider: CGFloat = activeSlider == nil ? 0 : 32
             let lyricsArea: CGFloat = track == nil ? 0 : 50
             return CGSize(width: Self.panelWidth, height: notchHeight + 8 + 104 + slider + lyricsArea + 14)
         case .request: return CGSize(width: Self.panelWidth, height: notchHeight + 118)

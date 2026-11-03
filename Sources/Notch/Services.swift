@@ -221,6 +221,35 @@ final class WeatherService {
 // MARK: System controls
 
 enum SystemControls {
+    private static var volumeAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+        mScope: kAudioDevicePropertyScopeOutput,
+        mElement: kAudioObjectPropertyElementMain)
+
+    private static func outputDevice() -> AudioDeviceID? {
+        var device = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+                                                 mScope: kAudioObjectPropertyScopeGlobal,
+                                                 mElement: kAudioObjectPropertyElementMain)
+        let status = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device)
+        return status == noErr ? device : nil
+    }
+
+    static func volume() -> Float {
+        guard let device = outputDevice() else { return 0 }
+        var value = Float32(0)
+        var size = UInt32(MemoryLayout<Float32>.size)
+        AudioObjectGetPropertyData(device, &volumeAddress, 0, nil, &size, &value)
+        return value
+    }
+
+    static func setVolume(_ value: Float) {
+        guard let device = outputDevice() else { return }
+        var value = Float32(value)
+        AudioObjectSetPropertyData(device, &volumeAddress, 0, nil, UInt32(MemoryLayout<Float32>.size), &value)
+    }
+
     static func toggleDarkMode() {
         Script.queue.async {
             _ = Script.run("tell application \"System Events\" to tell appearance preferences to set dark mode to not dark mode")

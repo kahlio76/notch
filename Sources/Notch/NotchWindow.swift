@@ -138,6 +138,7 @@ final class NotchWindowController {
             } else if store.hovering, leaveWork == nil {
                 let work = DispatchWorkItem { [weak self] in
                     self?.store.hovering = false
+                    self?.store.activeSlider = nil
                     self?.leaveWork = nil
                 }
                 leaveWork = work
@@ -156,6 +157,7 @@ final class NotchWindowController {
                     self.hoverWork = nil
                     self.store.nudged = false
                     self.store.hovering = true
+                    self.store.volume = SystemControls.volume()
                 }
             }
         } else {
