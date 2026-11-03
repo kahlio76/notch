@@ -61,6 +61,7 @@ final class MusicService {
             guard let self else { return }
             self.ticks += 1
             if self.store.surface == .widgets || self.ticks % 10 == 0 { self.poll() }
+            self.store.expireQuietSessions()
         }
         poll()
     }
