@@ -116,6 +116,25 @@ struct PanelView: View {
     }
 }
 
+struct IconButton: View {
+    let symbol: String
+    let color: Color
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(color)
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+    }
+}
+
 struct WidgetsView: View {
     @ObservedObject var store: NotchStore
     @Environment(\.colorScheme) private var scheme
@@ -185,6 +204,13 @@ struct MusicCard: View {
                         Text(store.spotifyRunning ? "Press play in Spotify" : "Spotify isn't open").font(.system(size: 12)).foregroundStyle(matte.secondary)
                     }
                     Spacer(minLength: 0)
+                    if store.track != nil {
+                        HStack(spacing: 18) {
+                            IconButton(symbol: "backward.fill", color: matte.primary, help: "Previous") { MusicService.send("previous track") }
+                            IconButton(symbol: store.isPlaying ? "pause.fill" : "play.fill", color: matte.primary, help: "Play or pause") { MusicService.send("playpause") }
+                            IconButton(symbol: "forward.fill", color: matte.primary, help: "Next") { MusicService.send("next track") }
+                        }
+                    }
                 }
                 .lineLimit(1)
                 Spacer(minLength: 0)

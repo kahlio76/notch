@@ -64,6 +64,10 @@ final class MusicService {
         poll()
     }
 
+    static func send(_ command: String) {
+        Script.queue.async { _ = Script.run("tell application \"Spotify\" to \(command)") }
+    }
+
     private func poll() {
         // `tell application` would launch Spotify if it were closed.
         guard !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty else {
