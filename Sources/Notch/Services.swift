@@ -293,6 +293,9 @@ final class PeekService {
     private var powerSource: CFRunLoopSource?
     private var wasPlugged: Bool?
     private var lastPercent: Int?
+    private var focusMode: String??
+    private var focusTimer: Timer?
+    private let focusDirectory = NSHomeDirectory() + "/Library/DoNotDisturb/DB/"
 
     init(store: NotchStore) {
         self.store = store
@@ -310,6 +313,8 @@ final class PeekService {
             CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode)
         }
         checkPower()
+        checkFocus()
+        focusTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in self?.checkFocus() }
     }
 
     private func checkPower() {
@@ -329,5 +334,17 @@ final class PeekService {
         lastPercent = percent
     }
 
+    private func checkFocus() {
+        guard let data = FileManager.default.contents(atPath: focusDirectory + "Assertions.json") else { return }
+        let mode = activeFocusMode(assertions: data)
+        defer { focusMode = .some(mode) }
+        guard let previous = focusMode, previous != mode else { return }
+        if let mode {
+            let names = FileManager.default.contents(atPath: focusDirectory + "ModeConfigurations.json").map(focusModeNames) ?? [:]
+            store.show(peek: Peek(symbol: "moon.fill", icon: nil, title: names[mode] ?? "Focus", detail: "on"))
+        } else {
+            store.show(peek: Peek(symbol: "moon", icon: nil, title: "Focus", detail: "off"))
+        }
+    }
 }
 
