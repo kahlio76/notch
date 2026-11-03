@@ -25,6 +25,7 @@ final class MusicService {
     private let store: NotchStore
     private var timer: Timer?
     private var ticks = 0
+    private var lyricsTrackID: String?
     private var artURL: String?
     private let bundleID = "com.spotify.client"
 
@@ -97,15 +98,31 @@ final class MusicService {
     }
 
     private func apply(state: String?, position: Double, track: Track?) {
+        store.positionAnchor = (position, Date())
         if store.track != track { store.track = track }
         let playing = state == "playing"
         if store.isPlaying != playing { store.isPlaying = playing }
         guard let track else {
+            store.lyrics = []
+            store.artwork = nil
+            lyricsTrackID = nil
+            artURL = nil
             return
         }
         if artURL != track.artURL {
             artURL = track.artURL
             loadArtwork(track.artURL)
+        }
+        if lyricsTrackID != track.id {
+            lyricsTrackID = track.id
+            store.lyrics = []
+            Task { [weak self] in
+                let lines = await LyricsClient.fetch(track)
+                await MainActor.run {
+                    guard self?.lyricsTrackID == track.id else { return }
+                    self?.store.lyrics = lines
+                }
+            }
         }
     }
 
@@ -121,6 +138,36 @@ final class MusicService {
                 self?.store.artwork = image
             }
         }.resume()
+    }
+}
+
+enum LyricsClient {
+    private struct Response: Decodable { let syncedLyrics: String? }
+
+    static func fetch(_ track: Track) async -> [LyricLine] {
+        var exact = URLComponents(string: "https://lrclib.net/api/get")!
+        exact.queryItems = [
+            .init(name: "track_name", value: track.name),
+            .init(name: "artist_name", value: track.artist),
+            .init(name: "album_name", value: track.album),
+            .init(name: "duration", value: String(Int(track.duration.rounded()))),
+        ]
+        if let found: Response = await request(exact), let lyrics = found.syncedLyrics {
+            return parseLRC(lyrics)
+        }
+        var search = URLComponents(string: "https://lrclib.net/api/search")!
+        search.queryItems = [.init(name: "track_name", value: track.name), .init(name: "artist_name", value: track.artist)]
+        let results: [Response]? = await request(search)
+        return results?.compactMap(\.syncedLyrics).first.map(parseLRC) ?? []
+    }
+
+    private static func request<T: Decodable>(_ components: URLComponents) async -> T? {
+        guard let url = components.url else { return nil }
+        var request = URLRequest(url: url, timeoutInterval: 10)
+        request.setValue("Notch/1.0", forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
     }
 }
 
