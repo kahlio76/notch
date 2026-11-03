@@ -18,3 +18,28 @@ Lyrics come from lrclib.net and weather from open-meteo.com. Neither needs a key
 are always left to Claude Code, because they need more than a yes or no.
 
 The first install keeps the original settings at `~/.claude/settings.json.before-notch`.
+
+## The panel that opened from the wrong place
+
+While using an early build, I noticed the panel sometimes grew from a point in the middle of nowhere instead of out of
+the notch. It happened about half the time, which suggested a timing problem.
+
+Recording repeated opens and measuring the shape's edges frame by frame never caught it, so **the cause below is
+inferred from the code, not proven**. The shape stayed centered horizontally in every frame, which ruled out the window
+drifting sideways.
+
+The likely cause: the window resized to fit each state, on a separate main-thread hop from the SwiftUI update that
+animated the shape. When SwiftUI went first, the content was briefly larger than its window, and a hosting view centers
+oversized content, so the animation would start from the wrong place. The blur transition also scaled content from the
+panel's center.
+
+The fix was to stop resizing:
+
+- The window is now one fixed size that fits the largest panel, so there is nothing to race.
+- `sizingOptions = []` stops the hosting view from resizing the window to fit its content.
+- The window ignores the mouse outside the drawn shape, so clicks around the notch still reach other apps.
+- The transition scales from the top edge instead of the center.
+
+After the change, ten randomized opens all grew from the notch, clicks passed through correctly, and the bug stopped
+appearing in normal use. This repo's history was split into feature steps after the fix, so the earlier resizing
+version isn't in it.
