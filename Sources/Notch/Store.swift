@@ -4,6 +4,15 @@ import NotchCore
 
 enum Surface: Equatable { case idle, wings, peek, widgets, request, done }
 
+struct WeatherNow: Equatable {
+    var city: String
+    var temperature: Int
+    var high: Int
+    var low: Int
+    var symbol: String
+    var label: String
+}
+
 /// All state the notch draws. Touched only on the main thread.
 final class NotchStore: ObservableObject {
     static let panelWidth: CGFloat = 620
@@ -14,6 +23,8 @@ final class NotchStore: ObservableObject {
     /// The mouse has rested on the notch but hasn't stayed long enough to open it.
     @Published var nudged = false
 
+
+    @Published var weather: WeatherNow?
 
 
 
