@@ -59,4 +59,10 @@ final class NotchCoreTests: XCTestCase {
         XCTAssertNil(ClaudeEvent(json: Data("{}".utf8)))
     }
 
+    func testDurations() {
+        XCTAssertEqual(doneDuration(10.2), "Done in 10 s")
+        XCTAssertEqual(doneDuration(125), "Done in 2 min")
+        XCTAssertEqual(doneDuration(3720), "Done in 1 h 2 min")
+    }
+
 }

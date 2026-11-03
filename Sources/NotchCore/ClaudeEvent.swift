@@ -67,3 +67,9 @@ public func permissionDecision(allow: Bool) -> Data {
     return (try? JSONSerialization.data(withJSONObject: output, options: [.sortedKeys])) ?? Data()
 }
 
+public func doneDuration(_ seconds: Double) -> String {
+    let s = Int(seconds.rounded())
+    if s < 60 { return "Done in \(s) s" }
+    if s < 3600 { return "Done in \(s / 60) min" }
+    return "Done in \(s / 3600) h \((s % 3600) / 60) min"
+}
