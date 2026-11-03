@@ -27,15 +27,35 @@ struct NotchShape: Shape {
     }
 }
 
+/// A blur and fade that scales from the top edge, so content grows out of the notch.
+private struct NotchContentEffect: ViewModifier {
+    let hidden: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .blur(radius: hidden ? 8 : 0)
+            .scaleEffect(hidden ? 0.96 : 1, anchor: .top)
+            .opacity(hidden ? 0 : 1)
+    }
+}
+
 extension AnyTransition {
-    static var notchContent: AnyTransition { .opacity }
+    static var notchContent: AnyTransition {
+        .modifier(active: NotchContentEffect(hidden: true), identity: NotchContentEffect(hidden: false))
+    }
 }
 
 struct RootView: View {
     @ObservedObject var store: NotchStore
     @Environment(\.colorScheme) private var scheme
 
-    private var motion: Animation { .spring(response: 0.36, dampingFraction: 0.84) }
+    /// Critically damped, so opening and closing glide with no wobble. Only the hover nudge bounces.
+    private var motion: Animation {
+        if store.nudged { return .bouncy.speed(1.2) }
+        return store.isPanel
+            ? .spring(response: 0.42, dampingFraction: 1.0)
+            : .spring(response: 0.45, dampingFraction: 1.0)
+    }
 
     private var contentTransition: AnyTransition {
         .asymmetric(
