@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MusicService(store: store),
             WeatherService(store: store, config: config),
             PeekService(store: store),
+            ApprovalHotKeys(store: store),
         ]
     }
 }

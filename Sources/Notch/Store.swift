@@ -30,6 +30,15 @@ struct Peek: Equatable {
     var detail: String
 }
 
+struct ApprovalRequest: Identifiable {
+    let id: UUID
+    let sessionID: String
+    let summary: String
+    let project: String
+    let respond: (Bool) -> Void
+    let cancel: () -> Void
+}
+
 struct DoneBanner: Equatable {
     var title: String
     var detail: String
@@ -71,8 +80,10 @@ final class NotchStore: ObservableObject {
 
     @Published var weather: WeatherNow?
 
+    @Published var requests: [ApprovalRequest] = []
     @Published var done: DoneBanner?
     @Published var sessions: [String: ClaudeSession] = [:]
+    private var frontShownAt = Date.distantPast
     private var doneTimer: Timer?
 
     var claudeWorking: Bool { sessions.values.contains { $0.working } }
@@ -81,6 +92,7 @@ final class NotchStore: ObservableObject {
     }
 
     var surface: Surface {
+        if !requests.isEmpty { return .request }
         if hovering { return .widgets }
         if done != nil { return .done }
         if peek != nil { return .peek }
@@ -135,6 +147,7 @@ final class NotchStore: ObservableObject {
             session.startedAt = Date()
             session.files = []
             sessions[event.sessionID] = session
+            cancelRequests(for: event.sessionID)
         case "PostToolUse":
             // Covers sessions that started before the app did.
             if session.startedAt == nil { session.startedAt = Date() }
@@ -149,8 +162,10 @@ final class NotchStore: ObservableObject {
             }
             session.startedAt = nil
             sessions[event.sessionID] = session
+            cancelRequests(for: event.sessionID)
         case "SessionEnd":
             sessions[event.sessionID] = nil
+            cancelRequests(for: event.sessionID)
         default:
             break
         }
@@ -169,4 +184,29 @@ final class NotchStore: ObservableObject {
         doneTimer = Timer.scheduledTimer(withTimeInterval: 6, repeats: false) { [weak self] _ in self?.done = nil }
     }
 
+    func add(_ request: ApprovalRequest) {
+        if requests.isEmpty { frontShownAt = Date() }
+        requests.append(request)
+    }
+
+    func remove(requestID: UUID) {
+        let wasFront = requests.first?.id == requestID
+        requests.removeAll { $0.id == requestID }
+        if wasFront { frontShownAt = Date() }
+    }
+
+    private func cancelRequests(for sessionID: String) {
+        for request in requests where request.sessionID == sessionID {
+            request.cancel()
+            remove(requestID: request.id)
+        }
+    }
+
+    /// Ignores input in the first moments a card is up, so a click or keypress
+    /// meant for something else can't approve a request that just appeared.
+    func decide(allow: Bool) {
+        guard let front = requests.first, Date().timeIntervalSince(frontShownAt) > 0.4 else { return }
+        front.respond(allow)
+        remove(requestID: front.id)
+    }
 }

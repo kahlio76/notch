@@ -67,7 +67,47 @@ final class ClaudeBridge {
             close(fd)
             return
         }
-        close(fd)
-        DispatchQueue.main.async { self.store.handle(event) }
+        guard event.name == "PermissionRequest", event.isApprovableFromNotch else {
+            close(fd)
+            DispatchQueue.main.async { self.store.handle(event) }
+            return
+        }
+        waitForDecision(event, fd)
+    }
+
+    private func waitForDecision(_ event: ClaudeEvent, _ fd: Int32) {
+        let id = UUID()
+        let lock = NSLock()
+        var finished = false
+        // Exactly one of an answer, a cancel or the hook going away closes the socket.
+        let finish: (Data?) -> Void = { reply in
+            lock.lock()
+            defer { lock.unlock() }
+            guard !finished else { return }
+            finished = true
+            if let reply {
+                let bytes = [UInt8](reply + [0x0A])
+                _ = write(fd, bytes, bytes.count)
+            }
+            close(fd)
+        }
+        let request = ApprovalRequest(id: id, sessionID: event.sessionID, summary: event.summary, project: event.project,
+                                      respond: { finish(permissionDecision(allow: $0)) }, cancel: { finish(nil) })
+        DispatchQueue.main.async { self.store.add(request) }
+
+        // The hook disappears if it times out or if the prompt was answered in the terminal.
+        var poller = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+        while true {
+            lock.lock()
+            let done = finished
+            lock.unlock()
+            if done { return }
+            if poll(&poller, 1, 250) > 0 {
+                var byte: UInt8 = 0
+                if recv(fd, &byte, 1, MSG_PEEK | MSG_DONTWAIT) == 0 { break }
+            }
+        }
+        finish(nil)
+        DispatchQueue.main.async { self.store.remove(requestID: id) }
     }
 }

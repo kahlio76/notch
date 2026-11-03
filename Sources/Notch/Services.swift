@@ -349,3 +349,44 @@ final class PeekService {
     }
 }
 
+// MARK: Hotkeys
+
+/// ⌃⌥Y and ⌃⌥N, registered only while a request is waiting so they don't take
+/// those keys from other apps the rest of the time.
+final class ApprovalHotKeys {
+    private let store: NotchStore
+    private var refs: [EventHotKeyRef] = []
+    private var observer: Any?
+    private var subscription: Any?
+    private static weak var current: ApprovalHotKeys?
+
+    init(store: NotchStore) {
+        self.store = store
+        Self.current = self
+        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+        InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
+            var id = EventHotKeyID()
+            GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
+                              MemoryLayout<EventHotKeyID>.size, nil, &id)
+            ApprovalHotKeys.current?.store.decide(allow: id.id == 1)
+            return noErr
+        }, 1, &spec, nil, nil)
+        subscription = store.$requests.sink { [weak self] requests in self?.sync(active: !requests.isEmpty) }
+    }
+
+    private func sync(active: Bool) {
+        if active, refs.isEmpty {
+            let modifiers = UInt32(controlKey | optionKey)
+            for (id, key) in [(UInt32(1), kVK_ANSI_Y), (UInt32(2), kVK_ANSI_N)] {
+                var ref: EventHotKeyRef?
+                let hotKeyID = EventHotKeyID(signature: OSType(0x4E544348), id: id)
+                if RegisterEventHotKey(UInt32(key), modifiers, hotKeyID, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
+                    refs.append(ref)
+                }
+            }
+        } else if !active, !refs.isEmpty {
+            refs.forEach { UnregisterEventHotKey($0) }
+            refs = []
+        }
+    }
+}
