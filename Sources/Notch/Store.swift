@@ -60,7 +60,7 @@ final class NotchStore: ObservableObject {
         case .peek: return CGSize(width: max(notchWidth + 40, 240) + 12 * nudge, height: notchHeight + 34 + 8 * nudge)
         case .widgets:
             let slider: CGFloat = 0
-            let lyricsArea: CGFloat = 0
+            let lyricsArea: CGFloat = track == nil ? 0 : 50
             return CGSize(width: Self.panelWidth, height: notchHeight + 8 + 104 + slider + lyricsArea + 14)
         case .request: return CGSize(width: Self.panelWidth, height: notchHeight + 118)
         case .done: return CGSize(width: Self.panelWidth, height: notchHeight + 76)

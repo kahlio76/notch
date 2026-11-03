@@ -148,6 +148,9 @@ struct WidgetsView: View {
             }
             .frame(height: 104)
             .padding(.top, 8)
+            if store.track != nil {
+                LyricsView(store: store, matte: matte).frame(height: 50)
+            }
         }
     }
 }
@@ -246,6 +249,33 @@ struct WeatherCard: View {
             } else {
                 Text("Loading weather…").font(.system(size: 12)).foregroundStyle(matte.secondary)
             }
+        }
+    }
+}
+
+struct LyricsView: View {
+    @ObservedObject var store: NotchStore
+    let matte: Matte
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+            let index = lyricIndex(in: store.lyrics, at: store.position)
+            let current = index.map { store.lyrics[$0].text } ?? ""
+            let nextIndex = (index ?? -1) + 1
+            let next = nextIndex < store.lyrics.count ? store.lyrics[nextIndex].text : ""
+            VStack(spacing: 3) {
+                if store.lyrics.isEmpty {
+                    Text("No synced lyrics for this song").font(.system(size: 12)).foregroundStyle(matte.tertiary)
+                } else {
+                    Text(current.isEmpty ? "♪" : current)
+                        .font(.system(size: 13.5, weight: .semibold)).foregroundStyle(matte.primary)
+                        .id(current).transition(.opacity)
+                    Text(next).font(.system(size: 12)).foregroundStyle(matte.tertiary)
+                }
+            }
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(.easeInOut(duration: 0.2), value: current)
         }
     }
 }
