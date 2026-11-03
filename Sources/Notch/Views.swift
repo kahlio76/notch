@@ -124,6 +124,7 @@ struct WidgetsView: View {
         let matte = Matte(scheme: scheme)
         VStack(spacing: 0) {
             HStack(spacing: 8) {
+                MusicCard(store: store)
                 WeatherCard(weather: store.weather)
             }
             .frame(height: 104)
@@ -141,6 +142,35 @@ struct Card<Content: View>: View {
             .padding(12)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(Matte(scheme: scheme).card))
+    }
+}
+
+struct MusicCard: View {
+    @ObservedObject var store: NotchStore
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let matte = Matte(scheme: scheme)
+        Card {
+            HStack(spacing: 12) {
+                Color.gray.opacity(0.3).frame(width: 80, height: 80)
+                VStack(alignment: .leading, spacing: 2) {
+                    if let track = store.track {
+                        Text(track.name).font(.system(size: 13, weight: .semibold)).foregroundStyle(matte.primary)
+                        Text(track.artist).font(.system(size: 12)).foregroundStyle(matte.secondary)
+                    } else if store.musicNeedsPermission {
+                        Text("Spotify needs permission").font(.system(size: 13, weight: .semibold)).foregroundStyle(matte.primary)
+                        Text("Allow Notch under Privacy & Security → Automation").font(.system(size: 11)).foregroundStyle(matte.secondary)
+                    } else {
+                        Text("Nothing playing").font(.system(size: 13, weight: .semibold)).foregroundStyle(matte.primary)
+                        Text(store.spotifyRunning ? "Press play in Spotify" : "Spotify isn't open").font(.system(size: 12)).foregroundStyle(matte.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+        }
     }
 }
 

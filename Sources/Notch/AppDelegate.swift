@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let config = Config.load()
         window = NotchWindowController(store: store)
         services = [
+            MusicService(store: store),
             WeatherService(store: store, config: config),
         ]
     }

@@ -4,6 +4,15 @@ import NotchCore
 
 enum Surface: Equatable { case idle, wings, peek, widgets, request, done }
 
+struct Track: Equatable {
+    var id: String
+    var name: String
+    var artist: String
+    var album: String
+    var duration: Double
+    var artURL: String
+}
+
 struct WeatherNow: Equatable {
     var city: String
     var temperature: Int
@@ -23,6 +32,10 @@ final class NotchStore: ObservableObject {
     /// The mouse has rested on the notch but hasn't stayed long enough to open it.
     @Published var nudged = false
 
+    @Published var track: Track?
+    @Published var isPlaying = false
+    @Published var musicNeedsPermission = false
+    @Published var spotifyRunning = false
 
     @Published var weather: WeatherNow?
 
