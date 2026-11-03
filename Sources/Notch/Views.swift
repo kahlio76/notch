@@ -82,6 +82,7 @@ struct RootView: View {
         ZStack(alignment: .top) {
             (isPanel ? Matte(scheme: scheme).panel : Color.black)
             if isPanel { PanelView(store: store).transition(contentTransition) }
+            if surface == .wings { WingsView(store: store).transition(contentTransition) }
             // The hardware notch stays black in either theme.
             UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10)
                 .fill(Color.black)
@@ -93,6 +94,31 @@ struct RootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(motion, value: surface)
         .animation(motion, value: size)
+    }
+}
+
+// MARK: Compact
+
+struct WingsView: View {
+    @ObservedObject var store: NotchStore
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Group {
+                if store.track != nil, store.isPlaying {
+                    ArtworkView(image: store.artwork, corner: 5).frame(width: 22, height: 22)
+                }
+            }
+            .frame(width: 42)
+            Spacer(minLength: store.notchWidth)
+            Group {
+                if store.isPlaying {
+                    EqualizerBars()
+                }
+            }
+            .frame(width: 42)
+        }
+        .frame(height: store.notchHeight)
     }
 }
 
@@ -280,3 +306,20 @@ struct LyricsView: View {
     }
 }
 
+// MARK: Small animations
+
+struct EqualizerBars: View {
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.12)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            HStack(spacing: 2) {
+                ForEach(0..<4, id: \.self) { bar in
+                    let level = 0.5 + 0.5 * sin(t * (5 + Double(bar) * 1.7) + Double(bar) * 1.3)
+                    Capsule().fill(Color.white.opacity(0.85)).frame(width: 2.5, height: 4 + 10 * level)
+                }
+            }
+            .frame(height: 16)
+            .animation(.linear(duration: 0.12), value: t)
+        }
+    }
+}
