@@ -37,10 +37,15 @@ final class NotchStore: ObservableObject {
     @Published var artwork: NSImage?
     @Published var musicNeedsPermission = false
     @Published var spotifyRunning = false
+    @Published var lyrics: [LyricLine] = []
+    var positionAnchor: (position: Double, at: Date) = (0, Date())
 
     @Published var weather: WeatherNow?
 
 
+    var position: Double {
+        positionAnchor.position + (isPlaying ? Date().timeIntervalSince(positionAnchor.at) : 0)
+    }
 
     var surface: Surface {
         if hovering { return .widgets }
