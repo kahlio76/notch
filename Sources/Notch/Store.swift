@@ -23,6 +23,13 @@ struct WeatherNow: Equatable {
     var label: String
 }
 
+struct Peek: Equatable {
+    var symbol: String?
+    var icon: NSImage?
+    var title: String
+    var detail: String
+}
+
 /// All state the notch draws. Touched only on the main thread.
 final class NotchStore: ObservableObject {
     static let panelWidth: CGFloat = 620
@@ -36,6 +43,9 @@ final class NotchStore: ObservableObject {
     @Published var activeSlider: ControlSlider?
     @Published var volume: Float = 0
     @Published var brightness: Float = 0
+
+    @Published var peek: Peek?
+    private var peekQueue: [Peek] = []
 
     @Published var track: Track?
     @Published var isPlaying = false
@@ -54,6 +64,7 @@ final class NotchStore: ObservableObject {
 
     var surface: Surface {
         if hovering { return .widgets }
+        if peek != nil { return .peek }
         if (track != nil && isPlaying) { return .wings }
         return .idle
     }
@@ -77,5 +88,20 @@ final class NotchStore: ObservableObject {
     /// How far the shape flares out where it meets the top of the screen.
     var topRadius: CGFloat { isPanel ? 19 : 6 }
     var bottomRadius: CGFloat { isPanel ? 24 : 14 }
+
+    // MARK: Peeks
+
+    func show(peek new: Peek) {
+        if peek == nil { present(new) } else if peekQueue.count < 2 { peekQueue.append(new) }
+    }
+
+    private func present(_ new: Peek) {
+        peek = new
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) { [weak self] in
+            guard let self else { return }
+            self.peek = nil
+            if !self.peekQueue.isEmpty { self.present(self.peekQueue.removeFirst()) }
+        }
+    }
 
 }

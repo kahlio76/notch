@@ -84,6 +84,7 @@ struct RootView: View {
             (isPanel ? Matte(scheme: scheme).panel : Color.black)
             if isPanel { PanelView(store: store).transition(contentTransition) }
             if surface == .wings { WingsView(store: store).transition(contentTransition) }
+            if surface == .peek, let peek = store.peek { PeekView(peek: peek, top: store.notchHeight).transition(contentTransition) }
             // The hardware notch stays black in either theme.
             UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10)
                 .fill(Color.black)
@@ -120,6 +121,25 @@ struct WingsView: View {
             .frame(width: 42)
         }
         .frame(height: store.notchHeight)
+    }
+}
+
+struct PeekView: View {
+    let peek: Peek
+    let top: CGFloat
+
+    var body: some View {
+        HStack(spacing: 7) {
+            if let icon = peek.icon {
+                Image(nsImage: icon).resizable().frame(width: 18, height: 18)
+            } else if let symbol = peek.symbol {
+                Image(systemName: symbol).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
+            }
+            Text(peek.title).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(.white)
+            Text(peek.detail).font(.system(size: 12)).foregroundStyle(.white.opacity(0.55))
+        }
+        .lineLimit(1)
+        .padding(.top, top + 7)
     }
 }
 

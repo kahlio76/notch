@@ -286,3 +286,19 @@ enum SystemControls {
     }
 }
 
+// MARK: Peeks
+
+final class PeekService {
+    private let store: NotchStore
+
+    init(store: NotchStore) {
+        self.store = store
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] note in
+            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  app.activationPolicy == .regular else { return }
+            self?.store.show(peek: Peek(symbol: nil, icon: app.icon, title: app.localizedName ?? "App", detail: "opened"))
+        }
+    }
+
+}
+

@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         services = [
             MusicService(store: store),
             WeatherService(store: store, config: config),
+            PeekService(store: store),
         ]
     }
 }
