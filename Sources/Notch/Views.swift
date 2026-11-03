@@ -114,7 +114,9 @@ struct WingsView: View {
             .frame(width: 42)
             Spacer(minLength: store.notchWidth)
             Group {
-                if store.isPlaying {
+                if store.claudeWorking {
+                    PixelGrid(state: .working, cell: 2.5, gap: 1)
+                } else if store.isPlaying {
                     EqualizerBars()
                 }
             }
@@ -153,6 +155,8 @@ struct PanelView: View {
         VStack(spacing: 0) {
             TopRow(store: store).frame(height: store.notchHeight)
             switch store.surface {
+            case .done:
+                DoneCard(store: store).transition(.notchContent)
             default:
                 WidgetsView(store: store).transition(.notchContent)
             }
@@ -421,7 +425,77 @@ struct LyricsView: View {
     }
 }
 
+// MARK: Claude cards
+
+struct DoneCard: View {
+    @ObservedObject var store: NotchStore
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let matte = Matte(scheme: scheme)
+        if let done = store.done {
+            HStack(spacing: 14) {
+                PixelGrid(state: .done, cell: 6, gap: 2)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(done.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(matte.primary)
+                    Text(done.detail).font(.system(size: 12)).foregroundStyle(matte.secondary)
+                    Text(done.project).font(.system(size: 11)).foregroundStyle(matte.tertiary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+        }
+    }
+}
+
 // MARK: Small animations
+
+enum PixelState { case working, waiting, done }
+
+struct PixelGrid: View {
+    let state: PixelState
+    let cell: CGFloat
+    let gap: CGFloat
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: state == .done ? 60 : 0.11)) { context in
+            let tick = Int(context.date.timeIntervalSinceReferenceDate / 0.11)
+            let size = cell * 5 + gap * 4
+            Canvas { graphics, _ in
+                for row in 0..<5 {
+                    for column in 0..<5 {
+                        let rect = CGRect(x: CGFloat(column) * (cell + gap), y: CGFloat(row) * (cell + gap), width: cell, height: cell)
+                        let (color, opacity) = style(row: row, column: column, tick: tick)
+                        graphics.fill(Path(roundedRect: rect, cornerRadius: cell * 0.2), with: .color(color.opacity(opacity)))
+                    }
+                }
+            }
+            .frame(width: size, height: size)
+        }
+    }
+
+    private func style(row: Int, column: Int, tick: Int) -> (Color, Double) {
+        switch state {
+        case .done:
+            return (Color(red: 0.36, green: 0.83, blue: 0.55), 0.95)
+        case .waiting:
+            let amber = Color(red: 0.98, green: 0.8, blue: 0.36)
+            let hash = (row * 7 + column * 13) % 11
+            let phase = (tick + hash * 3) % 22
+            return phase < 4 ? (amber, 1 - Double(phase) * 0.2) : (Color.gray, 0.22)
+        case .working:
+            // A short tail running around the outer ring.
+            let ring = [(0,0),(0,1),(0,2),(0,3),(0,4),(1,4),(2,4),(3,4),(4,4),(4,3),(4,2),(4,1),(4,0),(3,0),(2,0),(1,0)]
+            let orange = Color(red: 0.85, green: 0.47, blue: 0.34)
+            if let position = ring.firstIndex(where: { $0 == (row, column) }) {
+                let distance = (tick - position + 160) % ring.count
+                return distance < 5 ? (orange, 1 - Double(distance) * 0.18) : (Color.gray, 0.28)
+            }
+            return (Color.gray, 0.16)
+        }
+    }
+}
 
 struct EqualizerBars: View {
     var body: some View {
