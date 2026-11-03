@@ -130,7 +130,7 @@ struct PanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Color.clear.frame(height: store.notchHeight)
+            TopRow(store: store).frame(height: store.notchHeight)
             switch store.surface {
             default:
                 WidgetsView(store: store).transition(.notchContent)
@@ -139,6 +139,25 @@ struct PanelView: View {
         }
         .padding(.horizontal, 16)
         .frame(width: NotchStore.panelWidth)
+    }
+}
+
+struct TopRow: View {
+    @ObservedObject var store: NotchStore
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let matte = Matte(scheme: scheme)
+        HStack(spacing: 0) {
+            HStack(spacing: 14) {
+                IconButton(symbol: "circle.lefthalf.filled", color: matte.secondary, help: "Switch the Mac between dark and light") {
+                    SystemControls.toggleDarkMode()
+                }
+            }
+            Spacer(minLength: store.notchWidth + 8)
+            HStack(spacing: 10) {
+            }
+        }
     }
 }
 
