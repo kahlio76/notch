@@ -30,6 +30,12 @@ struct Peek: Equatable {
     var detail: String
 }
 
+struct DoneBanner: Equatable {
+    var title: String
+    var detail: String
+    var project: String
+}
+
 struct ClaudeSession {
     var project: String
     var startedAt: Date?
@@ -65,7 +71,9 @@ final class NotchStore: ObservableObject {
 
     @Published var weather: WeatherNow?
 
+    @Published var done: DoneBanner?
     @Published var sessions: [String: ClaudeSession] = [:]
+    private var doneTimer: Timer?
 
     var claudeWorking: Bool { sessions.values.contains { $0.working } }
     var position: Double {
@@ -74,6 +82,7 @@ final class NotchStore: ObservableObject {
 
     var surface: Surface {
         if hovering { return .widgets }
+        if done != nil { return .done }
         if peek != nil { return .peek }
         if claudeWorking || (track != nil && isPlaying) { return .wings }
         return .idle
@@ -132,6 +141,12 @@ final class NotchStore: ObservableObject {
             if let file = event.changedFile { session.files.insert(file) }
             sessions[event.sessionID] = session
         case "Stop":
+            if let started = session.startedAt {
+                let count = session.files.count
+                let files = count == 0 ? "No files changed" : "\(count) file\(count == 1 ? "" : "s") changed"
+                show(done: DoneBanner(title: doneDuration(Date().timeIntervalSince(started)),
+                                      detail: files, project: session.project))
+            }
             session.startedAt = nil
             sessions[event.sessionID] = session
         case "SessionEnd":
@@ -146,6 +161,12 @@ final class NotchStore: ObservableObject {
         for (id, session) in sessions where session.working && Date().timeIntervalSince(session.lastEvent) > 900 {
             sessions[id]?.startedAt = nil
         }
+    }
+
+    private func show(done banner: DoneBanner) {
+        done = banner
+        doneTimer?.invalidate()
+        doneTimer = Timer.scheduledTimer(withTimeInterval: 6, repeats: false) { [weak self] _ in self?.done = nil }
     }
 
 }
