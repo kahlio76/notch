@@ -20,5 +20,30 @@ public struct ClaudeEvent {
 
     public var project: String { (cwd as NSString).lastPathComponent }
 
+    /// What is being approved, in full. The card scrolls rather than truncating.
+    public var summary: String {
+        let tool = toolName ?? "Tool"
+        switch tool {
+        case "Bash":
+            return toolInput["command"] as? String ?? tool
+        case "Edit", "MultiEdit", "Write", "Read", "NotebookEdit":
+            let path = (toolInput["file_path"] ?? toolInput["notebook_path"]) as? String ?? ""
+            return "\(tool) \(relative(path))"
+        case "WebFetch":
+            return "Fetch \(toolInput["url"] as? String ?? "")"
+        case "WebSearch":
+            return "Search \(toolInput["query"] as? String ?? "")"
+        default:
+            guard !toolInput.isEmpty,
+                  let data = try? JSONSerialization.data(withJSONObject: toolInput, options: [.sortedKeys]),
+                  let text = String(data: data, encoding: .utf8) else { return tool }
+            return "\(tool) \(text)"
+        }
+    }
+
+    private func relative(_ path: String) -> String {
+        let prefix = cwd.hasSuffix("/") ? cwd : cwd + "/"
+        return !cwd.isEmpty && path.hasPrefix(prefix) ? String(path.dropFirst(prefix.count)) : path
+    }
 }
 
