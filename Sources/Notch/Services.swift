@@ -218,3 +218,13 @@ final class WeatherService {
     }
 }
 
+// MARK: System controls
+
+enum SystemControls {
+    static func toggleDarkMode() {
+        Script.queue.async {
+            _ = Script.run("tell application \"System Events\" to tell appearance preferences to set dark mode to not dark mode")
+        }
+    }
+}
+
