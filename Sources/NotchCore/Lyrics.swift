@@ -26,3 +26,12 @@ public func parseLRC(_ lrc: String) -> [LyricLine] {
     return lines.sorted { $0.time < $1.time }
 }
 
+/// Index of the line being sung at `position`, or nil before the first line.
+public func lyricIndex(in lines: [LyricLine], at position: Double) -> Int? {
+    var low = 0, high = lines.count
+    while low < high {
+        let mid = (low + high) / 2
+        if lines[mid].time <= position { low = mid + 1 } else { high = mid }
+    }
+    return low == 0 ? nil : low - 1
+}
