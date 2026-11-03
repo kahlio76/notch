@@ -65,4 +65,11 @@ final class NotchCoreTests: XCTestCase {
         XCTAssertEqual(doneDuration(3720), "Done in 1 h 2 min")
     }
 
+    func testFocusParsing() {
+        let on = #"{"data":[{"storeAssertionRecords":[{"assertionDetails":{"assertionDetailsModeIdentifier":"com.apple.focus.work"}}]}]}"#
+        XCTAssertEqual(activeFocusMode(assertions: Data(on.utf8)), "com.apple.focus.work")
+        XCTAssertNil(activeFocusMode(assertions: Data(#"{"data":[{"storeAssertionRecords":[]}]}"#.utf8)))
+        let names = #"{"data":[{"modeConfigurations":{"a":{"mode":{"name":"Work"}}}}]}"#
+        XCTAssertEqual(focusModeNames(configurations: Data(names.utf8)), ["a": "Work"])
+    }
 }
