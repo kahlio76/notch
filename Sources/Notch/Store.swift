@@ -11,6 +11,8 @@ final class NotchStore: ObservableObject {
     @Published var notchWidth: CGFloat = 185
     @Published var notchHeight: CGFloat = 32
     @Published var hovering = false
+    /// The mouse has rested on the notch but hasn't stayed long enough to open it.
+    @Published var nudged = false
 
 
 
@@ -21,7 +23,7 @@ final class NotchStore: ObservableObject {
     }
 
     var surfaceSize: CGSize {
-        let nudge: CGFloat = 0
+        let nudge: CGFloat = nudged ? 1 : 0
         switch surface {
         case .idle: return CGSize(width: notchWidth + 12 * nudge, height: notchHeight + 8 * nudge)
         case .wings: return CGSize(width: notchWidth + 84 + 12 * nudge, height: notchHeight + 8 * nudge)

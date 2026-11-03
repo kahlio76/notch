@@ -27,6 +27,7 @@ final class NotchWindowController {
     private var leaveWork: DispatchWorkItem?
     private let shadowRoom: CGFloat = 24
     private let tallestPanel: CGFloat = 214
+    private let nudgeDelay = 0.12
     private let openDelay = 0.3
 
     init(store: NotchStore) {
@@ -119,6 +120,7 @@ final class NotchWindowController {
     private func cancelHover() {
         hoverWork?.cancel()
         hoverWork = nil
+        if store.nudged { store.nudged = false }
     }
 
     private func mouseMoved() {
@@ -146,9 +148,15 @@ final class NotchWindowController {
         }
         if shape.insetBy(dx: -4, dy: 0).contains(mouse) {
             guard hoverWork == nil else { return }
-            schedule(after: openDelay) { [weak self] in
-                self?.hoverWork = nil
-                self?.store.hovering = true
+            schedule(after: nudgeDelay) { [weak self] in
+                guard let self else { return }
+                self.store.nudged = true
+                self.schedule(after: self.openDelay) { [weak self] in
+                    guard let self else { return }
+                    self.hoverWork = nil
+                    self.store.nudged = false
+                    self.store.hovering = true
+                }
             }
         } else {
             cancelHover()
