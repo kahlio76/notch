@@ -32,6 +32,7 @@ final class NotchStore: ObservableObject {
     @Published var hovering = false
     /// The mouse has rested on the notch but hasn't stayed long enough to open it.
     @Published var nudged = false
+    @Published var pinnedApps: [String] = []
     @Published var activeSlider: ControlSlider?
     @Published var volume: Float = 0
     @Published var brightness: Float = 0

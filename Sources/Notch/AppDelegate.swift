@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let config = Config.load()
+        store.pinnedApps = config.pinnedApps
         window = NotchWindowController(store: store)
         services = [
             MusicService(store: store),
