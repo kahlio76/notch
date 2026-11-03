@@ -155,6 +155,8 @@ struct PanelView: View {
         VStack(spacing: 0) {
             TopRow(store: store).frame(height: store.notchHeight)
             switch store.surface {
+            case .request:
+                RequestCard(store: store).transition(.notchContent)
             case .done:
                 DoneCard(store: store).transition(.notchContent)
             default:
@@ -426,6 +428,65 @@ struct LyricsView: View {
 }
 
 // MARK: Claude cards
+
+struct RequestCard: View {
+    @ObservedObject var store: NotchStore
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let matte = Matte(scheme: scheme)
+        if let request = store.requests.first {
+            HStack(alignment: .center, spacing: 14) {
+                PixelGrid(state: .waiting, cell: 6, gap: 2)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Claude needs your OK").font(.system(size: 14, weight: .semibold)).foregroundStyle(matte.primary)
+                    ScrollView(.vertical) {
+                        Text(request.summary)
+                            .font(.system(size: 12, design: .monospaced)).foregroundStyle(matte.primary.opacity(0.75))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                    .frame(maxHeight: 48)
+                    Text(store.requests.count > 1 ? "\(request.project)  ·  \(store.requests.count - 1) more waiting" : request.project)
+                        .font(.system(size: 11)).foregroundStyle(matte.tertiary)
+                }
+                VStack(spacing: 7) {
+                    DecisionButton(title: "Allow", keys: "⌃⌥Y", prominent: true) { store.decide(allow: true) }
+                    DecisionButton(title: "Deny", keys: "⌃⌥N", prominent: false) { store.decide(allow: false) }
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 12)
+        }
+    }
+}
+
+struct DecisionButton: View {
+    let title: String
+    let keys: String
+    let prominent: Bool
+    let action: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let dark = scheme == .dark
+        let fill = prominent ? (dark ? Color.white : Color.black) : Matte(scheme: scheme).card
+        let text = prominent ? (dark ? Color.black : Color.white) : Matte(scheme: scheme).primary
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Text(title).font(.system(size: 12.5, weight: .semibold))
+                Spacer(minLength: 0)
+                Text(keys).font(.system(size: 10.5)).opacity(0.55)
+            }
+            .foregroundStyle(text)
+            .padding(.horizontal, 13)
+            .frame(width: 112, height: 30)
+            .background(Capsule().fill(fill))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
 
 struct DoneCard: View {
     @ObservedObject var store: NotchStore
