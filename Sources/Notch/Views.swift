@@ -154,6 +154,12 @@ struct TopRow: View {
                     store.volume = SystemControls.volume()
                     store.activeSlider = store.activeSlider == .volume ? nil : .volume
                 }
+                if SystemControls.hasBrightness {
+                    IconButton(symbol: "sun.max", color: store.activeSlider == .brightness ? matte.primary : matte.secondary, help: "Brightness") {
+                        store.brightness = SystemControls.brightness()
+                        store.activeSlider = store.activeSlider == .brightness ? nil : .brightness
+                    }
+                }
                 IconButton(symbol: "circle.lefthalf.filled", color: matte.secondary, help: "Switch the Mac between dark and light") {
                     SystemControls.toggleDarkMode()
                 }
@@ -216,7 +222,10 @@ struct SliderRow: View {
         HStack(spacing: 10) {
             Image(systemName: kind == .volume ? "speaker.fill" : "sun.min.fill")
                 .font(.system(size: 11)).foregroundStyle(Matte(scheme: scheme).secondary).frame(width: 16)
-            Slider(value: Binding(get: { store.volume }, set: { store.volume = $0; SystemControls.setVolume($0) }), in: 0...1)
+            Slider(value: kind == .volume
+                ? Binding(get: { store.volume }, set: { store.volume = $0; SystemControls.setVolume($0) })
+                : Binding(get: { store.brightness }, set: { store.brightness = $0; SystemControls.setBrightness($0) }),
+                in: 0...1)
                 .controlSize(.small)
         }
         .padding(.horizontal, 6)

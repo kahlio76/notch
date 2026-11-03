@@ -158,6 +158,7 @@ final class NotchWindowController {
                     self.store.nudged = false
                     self.store.hovering = true
                     self.store.volume = SystemControls.volume()
+                    self.store.brightness = SystemControls.brightness()
                 }
             }
         } else {

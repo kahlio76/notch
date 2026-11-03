@@ -34,6 +34,7 @@ final class NotchStore: ObservableObject {
     @Published var nudged = false
     @Published var activeSlider: ControlSlider?
     @Published var volume: Float = 0
+    @Published var brightness: Float = 0
 
     @Published var track: Track?
     @Published var isPlaying = false
