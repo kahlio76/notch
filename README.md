@@ -1,7 +1,9 @@
 # Notch
 
-A native macOS notch panel, in progress.
+A native macOS notch panel: Spotify with live lyrics, weather, volume, brightness, a whole-Mac
+dark/light switch, peeks, and Claude Code status with approve/deny.
 
+```bash
 scripts/install.sh    # build, install to /Applications, add Claude Code hooks, launch
 scripts/uninstall.sh  # remove the app, its hooks and ~/.notch
 swift test
