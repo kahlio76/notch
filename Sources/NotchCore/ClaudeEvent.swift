@@ -59,3 +59,11 @@ public struct ClaudeEvent {
     }
 }
 
+/// The single JSON line Claude Code reads from the hook's stdout.
+public func permissionDecision(allow: Bool) -> Data {
+    var decision: [String: Any] = ["behavior": allow ? "allow" : "deny"]
+    if !allow { decision["message"] = "Denied from the notch." }
+    let output: [String: Any] = ["hookSpecificOutput": ["hookEventName": "PermissionRequest", "decision": decision]]
+    return (try? JSONSerialization.data(withJSONObject: output, options: [.sortedKeys])) ?? Data()
+}
+

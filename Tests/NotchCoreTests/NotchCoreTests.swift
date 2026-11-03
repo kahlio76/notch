@@ -43,6 +43,17 @@ final class NotchCoreTests: XCTestCase {
         XCTAssertNil(event("Read", #"{"file_path":"/f"}"#).changedFile)
     }
 
+    func testDecisionJSON() throws {
+        func behavior(_ data: Data) throws -> [String: Any] {
+            let root = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+            let specific = root["hookSpecificOutput"] as! [String: Any]
+            XCTAssertEqual(specific["hookEventName"] as? String, "PermissionRequest")
+            return specific["decision"] as! [String: Any]
+        }
+        XCTAssertEqual(try behavior(permissionDecision(allow: true))["behavior"] as? String, "allow")
+        XCTAssertEqual(try behavior(permissionDecision(allow: false))["behavior"] as? String, "deny")
+    }
+
     func testBadPayloadIsRejected() {
         XCTAssertNil(ClaudeEvent(json: Data("nope".utf8)))
         XCTAssertNil(ClaudeEvent(json: Data("{}".utf8)))
