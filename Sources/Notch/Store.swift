@@ -34,6 +34,7 @@ final class NotchStore: ObservableObject {
 
     @Published var track: Track?
     @Published var isPlaying = false
+    @Published var artwork: NSImage?
     @Published var musicNeedsPermission = false
     @Published var spotifyRunning = false
 

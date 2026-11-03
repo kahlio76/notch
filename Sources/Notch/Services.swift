@@ -25,6 +25,7 @@ final class MusicService {
     private let store: NotchStore
     private var timer: Timer?
     private var ticks = 0
+    private var artURL: String?
     private let bundleID = "com.spotify.client"
 
     private static let separator = "\u{1F}"
@@ -98,8 +99,25 @@ final class MusicService {
         guard let track else {
             return
         }
+        if artURL != track.artURL {
+            artURL = track.artURL
+            loadArtwork(track.artURL)
+        }
     }
 
+    private func loadArtwork(_ address: String) {
+        guard let url = URL(string: address) else {
+            store.artwork = nil
+            return
+        }
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            let image = data.flatMap(NSImage.init(data:))
+            DispatchQueue.main.async {
+                guard self?.artURL == address else { return }
+                self?.store.artwork = image
+            }
+        }.resume()
+    }
 }
 
 // MARK: Weather
