@@ -290,6 +290,9 @@ enum SystemControls {
 
 final class PeekService {
     private let store: NotchStore
+    private var powerSource: CFRunLoopSource?
+    private var wasPlugged: Bool?
+    private var lastPercent: Int?
 
     init(store: NotchStore) {
         self.store = store
@@ -298,6 +301,32 @@ final class PeekService {
                   app.activationPolicy == .regular else { return }
             self?.store.show(peek: Peek(symbol: nil, icon: app.icon, title: app.localizedName ?? "App", detail: "opened"))
         }
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        if let source = IOPSNotificationCreateRunLoopSource({ context in
+            guard let context else { return }
+            Unmanaged<PeekService>.fromOpaque(context).takeUnretainedValue().checkPower()
+        }, context)?.takeRetainedValue() {
+            powerSource = source
+            CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode)
+        }
+        checkPower()
+    }
+
+    private func checkPower() {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+              let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef],
+              let first = list.first,
+              let details = IOPSGetPowerSourceDescription(info, first)?.takeUnretainedValue() as? [String: Any],
+              let percent = details[kIOPSCurrentCapacityKey] as? Int else { return }
+        let plugged = details[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue
+        if let wasPlugged, wasPlugged != plugged {
+            store.show(peek: Peek(symbol: plugged ? "bolt.fill" : "battery.75percent", icon: nil,
+                                  title: plugged ? "Charging" : "On battery", detail: "\(percent)%"))
+        } else if !plugged, let lastPercent, lastPercent > percent, percent == 20 || percent == 10 {
+            store.show(peek: Peek(symbol: "battery.25percent", icon: nil, title: "Battery low", detail: "\(percent)%"))
+        }
+        wasPlugged = plugged
+        lastPercent = percent
     }
 
 }
