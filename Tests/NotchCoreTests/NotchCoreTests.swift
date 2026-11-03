@@ -9,4 +9,13 @@ final class NotchCoreTests: XCTestCase {
         XCTAssertEqual(lines[3].time, 20)
     }
 
+    func testLyricIndex() {
+        let lines = [LyricLine(time: 1, text: "a"), LyricLine(time: 5, text: "b")]
+        XCTAssertNil(lyricIndex(in: lines, at: 0.5))
+        XCTAssertEqual(lyricIndex(in: lines, at: 1), 0)
+        XCTAssertEqual(lyricIndex(in: lines, at: 4.9), 0)
+        XCTAssertEqual(lyricIndex(in: lines, at: 500), 1)
+        XCTAssertNil(lyricIndex(in: [], at: 3))
+    }
+
 }
