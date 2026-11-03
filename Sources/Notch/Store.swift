@@ -30,6 +30,14 @@ struct Peek: Equatable {
     var detail: String
 }
 
+struct ClaudeSession {
+    var project: String
+    var startedAt: Date?
+    var files: Set<String> = []
+    var lastEvent = Date()
+    var working: Bool { startedAt != nil }
+}
+
 /// All state the notch draws. Touched only on the main thread.
 final class NotchStore: ObservableObject {
     static let panelWidth: CGFloat = 620
@@ -57,7 +65,9 @@ final class NotchStore: ObservableObject {
 
     @Published var weather: WeatherNow?
 
+    @Published var sessions: [String: ClaudeSession] = [:]
 
+    var claudeWorking: Bool { sessions.values.contains { $0.working } }
     var position: Double {
         positionAnchor.position + (isPlaying ? Date().timeIntervalSince(positionAnchor.at) : 0)
     }
@@ -65,7 +75,7 @@ final class NotchStore: ObservableObject {
     var surface: Surface {
         if hovering { return .widgets }
         if peek != nil { return .peek }
-        if (track != nil && isPlaying) { return .wings }
+        if claudeWorking || (track != nil && isPlaying) { return .wings }
         return .idle
     }
 
@@ -101,6 +111,40 @@ final class NotchStore: ObservableObject {
             guard let self else { return }
             self.peek = nil
             if !self.peekQueue.isEmpty { self.present(self.peekQueue.removeFirst()) }
+        }
+    }
+
+    // MARK: Claude
+
+    func handle(_ event: ClaudeEvent) {
+        var session = sessions[event.sessionID] ?? ClaudeSession(project: event.project)
+        session.lastEvent = Date()
+        switch event.name {
+        case "SessionStart":
+            sessions[event.sessionID] = session
+        case "UserPromptSubmit":
+            session.startedAt = Date()
+            session.files = []
+            sessions[event.sessionID] = session
+        case "PostToolUse":
+            // Covers sessions that started before the app did.
+            if session.startedAt == nil { session.startedAt = Date() }
+            if let file = event.changedFile { session.files.insert(file) }
+            sessions[event.sessionID] = session
+        case "Stop":
+            session.startedAt = nil
+            sessions[event.sessionID] = session
+        case "SessionEnd":
+            sessions[event.sessionID] = nil
+        default:
+            break
+        }
+    }
+
+    /// A session killed mid-turn never sends Stop, so a quiet one stops counting as working.
+    func expireQuietSessions() {
+        for (id, session) in sessions where session.working && Date().timeIntervalSince(session.lastEvent) > 900 {
+            sessions[id]?.startedAt = nil
         }
     }
 
