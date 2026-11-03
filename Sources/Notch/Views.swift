@@ -145,6 +145,25 @@ struct Card<Content: View>: View {
     }
 }
 
+struct ArtworkView: View {
+    let image: NSImage?
+    let corner: CGFloat
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+            } else {
+                ZStack {
+                    Color.gray.opacity(0.3)
+                    Image(systemName: "music.note").foregroundStyle(.secondary)
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+    }
+}
+
 struct MusicCard: View {
     @ObservedObject var store: NotchStore
     @Environment(\.colorScheme) private var scheme
@@ -153,7 +172,7 @@ struct MusicCard: View {
         let matte = Matte(scheme: scheme)
         Card {
             HStack(spacing: 12) {
-                Color.gray.opacity(0.3).frame(width: 80, height: 80)
+                ArtworkView(image: store.track == nil ? nil : store.artwork, corner: 10).frame(width: 80, height: 80)
                 VStack(alignment: .leading, spacing: 2) {
                     if let track = store.track {
                         Text(track.name).font(.system(size: 13, weight: .semibold)).foregroundStyle(matte.primary)
