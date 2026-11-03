@@ -1,5 +1,6 @@
 import AppKit
 import NotchCore
+import ServiceManagement
 import SwiftUI
 
 struct Matte {
@@ -150,6 +151,7 @@ struct TopRow: View {
         let matte = Matte(scheme: scheme)
         HStack(spacing: 0) {
             HStack(spacing: 14) {
+                SettingsMenu(color: matte.secondary)
                 IconButton(symbol: "speaker.wave.2", color: store.activeSlider == .volume ? matte.primary : matte.secondary, help: "Volume") {
                     store.volume = SystemControls.volume()
                     store.activeSlider = store.activeSlider == .volume ? nil : .volume
@@ -166,6 +168,7 @@ struct TopRow: View {
             }
             Spacer(minLength: store.notchWidth + 8)
             HStack(spacing: 10) {
+                ForEach(store.pinnedApps, id: \.self) { AppButton(bundleID: $0) }
             }
         }
     }
@@ -187,6 +190,47 @@ struct IconButton: View {
         }
         .buttonStyle(.plain)
         .help(help)
+    }
+}
+
+struct SettingsMenu: View {
+    let color: Color
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+
+    var body: some View {
+        Menu {
+            Toggle("Launch at Login", isOn: Binding(
+                get: { launchAtLogin },
+                set: { on in
+                    try? on ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
+                    launchAtLogin = SMAppService.mainApp.status == .enabled
+                }
+            ))
+            Button("Edit Settings File…") { NSWorkspace.shared.open(URL(fileURLWithPath: Config.path)) }
+            Divider()
+            Button("Quit Notch") { NSApp.terminate(nil) }
+        } label: {
+            Image(systemName: "gearshape").font(.system(size: 13)).foregroundStyle(color)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+    }
+}
+
+struct AppButton: View {
+    let bundleID: String
+
+    var body: some View {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            Button {
+                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+            } label: {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 20, height: 20)
+            }
+            .buttonStyle(.plain)
+            .help(url.deletingPathExtension().lastPathComponent)
+        }
     }
 }
 
