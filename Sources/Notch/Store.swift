@@ -1,0 +1,41 @@
+import AppKit
+import Combine
+import NotchCore
+
+enum Surface: Equatable { case idle, wings, peek, widgets, request, done }
+
+/// All state the notch draws. Touched only on the main thread.
+final class NotchStore: ObservableObject {
+    static let panelWidth: CGFloat = 620
+
+    @Published var notchWidth: CGFloat = 185
+    @Published var notchHeight: CGFloat = 32
+
+
+
+
+    var surface: Surface {
+        return .idle
+    }
+
+    var surfaceSize: CGSize {
+        let nudge: CGFloat = 0
+        switch surface {
+        case .idle: return CGSize(width: notchWidth + 12 * nudge, height: notchHeight + 8 * nudge)
+        case .wings: return CGSize(width: notchWidth + 84 + 12 * nudge, height: notchHeight + 8 * nudge)
+        case .peek: return CGSize(width: max(notchWidth + 40, 240) + 12 * nudge, height: notchHeight + 34 + 8 * nudge)
+        case .widgets:
+            let slider: CGFloat = 0
+            let lyricsArea: CGFloat = 0
+            return CGSize(width: Self.panelWidth, height: notchHeight + 8 + 104 + slider + lyricsArea + 14)
+        case .request: return CGSize(width: Self.panelWidth, height: notchHeight + 118)
+        case .done: return CGSize(width: Self.panelWidth, height: notchHeight + 76)
+        }
+    }
+
+    var isPanel: Bool { [.widgets, .request, .done].contains(surface) }
+    /// How far the shape flares out where it meets the top of the screen.
+    var topRadius: CGFloat { isPanel ? 19 : 6 }
+    var bottomRadius: CGFloat { isPanel ? 24 : 14 }
+
+}

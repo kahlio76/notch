@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "NotchCore"),
+        .executableTarget(name: "Notch", dependencies: ["NotchCore"]),
         .executableTarget(name: "notch-hook"),
         .testTarget(name: "NotchCoreTests", dependencies: ["NotchCore"]),
     ]
