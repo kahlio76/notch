@@ -49,6 +49,7 @@ final class NotchStore: ObservableObject {
 
     var surface: Surface {
         if hovering { return .widgets }
+        if (track != nil && isPlaying) { return .wings }
         return .idle
     }
 
