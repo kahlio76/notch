@@ -6,8 +6,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var services: [AnyObject] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let config = Config.load()
         window = NotchWindowController(store: store)
         services = [
+            WeatherService(store: store, config: config),
         ]
     }
 }

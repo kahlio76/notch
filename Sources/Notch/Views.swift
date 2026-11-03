@@ -2,6 +2,15 @@ import AppKit
 import NotchCore
 import SwiftUI
 
+struct Matte {
+    let scheme: ColorScheme
+    var panel: Color { scheme == .dark ? Color.black : Color(red: 0.93, green: 0.935, blue: 0.945) }
+    var card: Color { scheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.85) }
+    var primary: Color { scheme == .dark ? Color.white.opacity(0.94) : Color.black.opacity(0.86) }
+    var secondary: Color { scheme == .dark ? Color.white.opacity(0.55) : Color.black.opacity(0.5) }
+    var tertiary: Color { scheme == .dark ? Color.white.opacity(0.32) : Color.black.opacity(0.3) }
+}
+
 /// The notch outline: flat along the top of the screen, flaring out at the top corners.
 struct NotchShape: Shape {
     var top: CGFloat
@@ -71,7 +80,7 @@ struct RootView: View {
         let shape = NotchShape(top: store.topRadius, bottom: store.bottomRadius)
 
         ZStack(alignment: .top) {
-            Color.black
+            (isPanel ? Matte(scheme: scheme).panel : Color.black)
             if isPanel { PanelView(store: store).transition(contentTransition) }
             // The hardware notch stays black in either theme.
             UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10)
@@ -98,12 +107,71 @@ struct PanelView: View {
             Color.clear.frame(height: store.notchHeight)
             switch store.surface {
             default:
-                Color.clear.transition(.notchContent)
+                WidgetsView(store: store).transition(.notchContent)
             }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 16)
         .frame(width: NotchStore.panelWidth)
+    }
+}
+
+struct WidgetsView: View {
+    @ObservedObject var store: NotchStore
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let matte = Matte(scheme: scheme)
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                WeatherCard(weather: store.weather)
+            }
+            .frame(height: 104)
+            .padding(.top, 8)
+        }
+    }
+}
+
+struct Card<Content: View>: View {
+    @Environment(\.colorScheme) private var scheme
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        content()
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(Matte(scheme: scheme).card))
+    }
+}
+
+struct WeatherCard: View {
+    let weather: WeatherNow?
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let matte = Matte(scheme: scheme)
+        Card {
+            if let weather {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("\(weather.temperature)°").font(.system(size: 30, weight: .light)).foregroundStyle(matte.primary)
+                        Text(weather.city).font(.system(size: 12)).foregroundStyle(matte.secondary)
+                        Spacer(minLength: 0)
+                        Text("H \(weather.high)°  L \(weather.low)°").font(.system(size: 11)).foregroundStyle(matte.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: weather.symbol)
+                        // The multicolor cloud is white, which vanishes on White Matte.
+                        .symbolRenderingMode(scheme == .dark ? .multicolor : .hierarchical)
+                        .foregroundStyle(matte.secondary)
+                        .font(.system(size: 26))
+                        .help(weather.label)
+                }
+                .lineLimit(1)
+            } else {
+                Text("Loading weather…").font(.system(size: 12)).foregroundStyle(matte.secondary)
+            }
+        }
     }
 }
 
