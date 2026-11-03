@@ -250,6 +250,35 @@ enum SystemControls {
         AudioObjectSetPropertyData(device, &volumeAddress, 0, nil, UInt32(MemoryLayout<Float32>.size), &value)
     }
 
+    // macOS has no public brightness API; every brightness tool uses this private framework.
+    private typealias GetBrightness = @convention(c) (UInt32, UnsafeMutablePointer<Float>) -> Int32
+    private typealias SetBrightness = @convention(c) (UInt32, Float) -> Int32
+    private static let displayServices = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_LAZY)
+    private static let getBrightness: GetBrightness? = displayServices.flatMap { dlsym($0, "DisplayServicesGetBrightness") }
+        .map { unsafeBitCast($0, to: GetBrightness.self) }
+    private static let setBrightnessFunction: SetBrightness? = displayServices.flatMap { dlsym($0, "DisplayServicesSetBrightness") }
+        .map { unsafeBitCast($0, to: SetBrightness.self) }
+
+    private static var builtInDisplay: UInt32 {
+        var displays = [CGDirectDisplayID](repeating: 0, count: 8)
+        var count: UInt32 = 0
+        CGGetOnlineDisplayList(8, &displays, &count)
+        return displays.prefix(Int(count)).first { CGDisplayIsBuiltin($0) != 0 } ?? CGMainDisplayID()
+    }
+
+    static var hasBrightness: Bool { getBrightness != nil && setBrightnessFunction != nil }
+
+    static func brightness() -> Float {
+        var value: Float = 0
+        _ = getBrightness?(builtInDisplay, &value)
+        return value
+    }
+
+    static func setBrightness(_ value: Float) {
+        // Stops short of fully black, where the slider itself would be unreadable.
+        _ = setBrightnessFunction?(builtInDisplay, max(value, 0.03))
+    }
+
     static func toggleDarkMode() {
         Script.queue.async {
             _ = Script.run("tell application \"System Events\" to tell appearance preferences to set dark mode to not dark mode")
