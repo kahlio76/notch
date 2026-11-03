@@ -18,4 +18,9 @@ final class NotchCoreTests: XCTestCase {
         XCTAssertNil(lyricIndex(in: [], at: 3))
     }
 
+    func testBadPayloadIsRejected() {
+        XCTAssertNil(ClaudeEvent(json: Data("nope".utf8)))
+        XCTAssertNil(ClaudeEvent(json: Data("{}".utf8)))
+    }
+
 }
