@@ -52,6 +52,7 @@ struct RootView: View {
 
         ZStack(alignment: .top) {
             Color.black
+            if isPanel { PanelView(store: store).transition(contentTransition) }
             // The hardware notch stays black in either theme.
             UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10)
                 .fill(Color.black)
@@ -63,6 +64,26 @@ struct RootView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(motion, value: surface)
         .animation(motion, value: size)
+    }
+}
+
+// MARK: Panel
+
+struct PanelView: View {
+    @ObservedObject var store: NotchStore
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Color.clear.frame(height: store.notchHeight)
+            switch store.surface {
+            default:
+                Color.clear.transition(.notchContent)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .frame(width: NotchStore.panelWidth)
     }
 }
 

@@ -10,11 +10,13 @@ final class NotchStore: ObservableObject {
 
     @Published var notchWidth: CGFloat = 185
     @Published var notchHeight: CGFloat = 32
+    @Published var hovering = false
 
 
 
 
     var surface: Surface {
+        if hovering { return .widgets }
         return .idle
     }
 

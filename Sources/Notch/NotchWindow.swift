@@ -21,8 +21,13 @@ final class NotchWindowController {
     private let store: NotchStore
     private let panel: NotchPanel
     private var subscriptions = Set<AnyCancellable>()
+    private var monitors: [Any] = []
+    /// The pending hover step: first the nudge, then the full open.
+    private var hoverWork: DispatchWorkItem?
+    private var leaveWork: DispatchWorkItem?
     private let shadowRoom: CGFloat = 24
     private let tallestPanel: CGFloat = 214
+    private let openDelay = 0.3
 
     init(store: NotchStore) {
         self.store = store
@@ -46,6 +51,10 @@ final class NotchWindowController {
         placeWindow()
         panel.orderFrontRegardless()
 
+        store.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in self?.updateMouseThrough() }
+            .store(in: &subscriptions)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .sink { [weak self] _ in
                 self?.readScreen()
@@ -53,6 +62,16 @@ final class NotchWindowController {
             }
             .store(in: &subscriptions)
 
+        let events: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged]
+        if let global = NSEvent.addGlobalMonitorForEvents(matching: events, handler: { [weak self] _ in self?.mouseMoved() }) {
+            monitors.append(global)
+        }
+        if let local = NSEvent.addLocalMonitorForEvents(matching: events, handler: { [weak self] event in
+            self?.mouseMoved()
+            return event
+        }) {
+            monitors.append(local)
+        }
     }
 
     private var screen: NSScreen {
@@ -78,4 +97,61 @@ final class NotchWindowController {
         panel.setFrame(NSRect(x: screen.midX - width / 2, y: screen.maxY - height, width: width, height: height), display: true)
     }
 
+    /// The drawn shape in screen coordinates, including its flared top corners.
+    private var shapeRect: NSRect {
+        let screen = self.screen.frame
+        let size = store.surfaceSize
+        let width = size.width + store.topRadius * 2
+        return NSRect(x: screen.midX - width / 2, y: screen.maxY - size.height, width: width, height: size.height + 2)
+    }
+
+    private func updateMouseThrough() {
+        let through = !shapeRect.contains(NSEvent.mouseLocation)
+        if panel.ignoresMouseEvents != through { panel.ignoresMouseEvents = through }
+    }
+
+    private func schedule(after delay: Double, _ step: @escaping () -> Void) {
+        let work = DispatchWorkItem(block: step)
+        hoverWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    private func cancelHover() {
+        hoverWork?.cancel()
+        hoverWork = nil
+    }
+
+    private func mouseMoved() {
+        updateMouseThrough()
+        let mouse = NSEvent.mouseLocation
+        let screen = self.screen.frame
+        let size = store.surfaceSize
+        let shape = NSRect(x: screen.midX - size.width / 2, y: screen.maxY - size.height,
+                           width: size.width, height: size.height + 2)
+        if store.hovering || store.surface == .request {
+            let inside = shape.insetBy(dx: -14, dy: -14).contains(mouse)
+            if inside {
+                leaveWork?.cancel()
+                leaveWork = nil
+            } else if store.hovering, leaveWork == nil {
+                let work = DispatchWorkItem { [weak self] in
+                    self?.store.hovering = false
+                    self?.leaveWork = nil
+                }
+                leaveWork = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+            }
+            cancelHover()
+            return
+        }
+        if shape.insetBy(dx: -4, dy: 0).contains(mouse) {
+            guard hoverWork == nil else { return }
+            schedule(after: openDelay) { [weak self] in
+                self?.hoverWork = nil
+                self?.store.hovering = true
+            }
+        } else {
+            cancelHover()
+        }
+    }
 }
