@@ -559,17 +559,30 @@ struct PixelGrid: View {
 }
 
 struct EqualizerBars: View {
+    @ObservedObject private var levels = AudioLevels.shared
+
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.12)) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
-            HStack(spacing: 2) {
-                ForEach(0..<4, id: \.self) { bar in
-                    let level = 0.5 + 0.5 * sin(t * (5 + Double(bar) * 1.7) + Double(bar) * 1.3)
-                    Capsule().fill(Color.white.opacity(0.85)).frame(width: 2.5, height: 4 + 10 * level)
+        Group {
+            if levels.bars.isEmpty {
+                // No live audio yet (or no permission): an idle wiggle so it still reads as "playing".
+                TimelineView(.periodic(from: .now, by: 0.12)) { context in
+                    let t = context.date.timeIntervalSinceReferenceDate
+                    bars((0..<Spectrum.bands.count).map { 0.5 + 0.5 * sin(t * (5 + Double($0) * 1.7) + Double($0) * 1.3) })
+                        .animation(.linear(duration: 0.12), value: t)
                 }
+            } else {
+                bars(levels.bars.map(Double.init))
+                    .animation(.linear(duration: 0.05), value: levels.bars)
             }
-            .frame(height: 16)
-            .animation(.linear(duration: 0.12), value: t)
+        }
+        .frame(height: 16)
+    }
+
+    private func bars(_ heights: [Double]) -> some View {
+        HStack(spacing: 2) {
+            ForEach(heights.indices, id: \.self) { bar in
+                Capsule().fill(Color.white.opacity(0.85)).frame(width: 2.5, height: 3 + 13 * heights[bar])
+            }
         }
     }
 }

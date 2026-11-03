@@ -72,4 +72,29 @@ final class NotchCoreTests: XCTestCase {
         let names = #"{"data":[{"modeConfigurations":{"a":{"mode":{"name":"Work"}}}}]}"#
         XCTAssertEqual(focusModeNames(configurations: Data(names.utf8)), ["a": "Work"])
     }
+
+    private func sine(_ frequency: Double, amplitude: Float = 1, count: Int = 1024, rate: Double = 48_000) -> [Float] {
+        (0..<count).map { amplitude * Float(sin(2 * .pi * frequency * Double($0) / rate)) }
+    }
+
+    func testSpectrumPutsToneInItsBand() {
+        let spectrum = Spectrum()
+        for (frequency, band) in [(80.0, 0), (250.0, 1), (900.0, 2), (3_000.0, 3), (9_000.0, 4)] {
+            let decibels = spectrum.decibels(sine(frequency), sampleRate: 48_000)
+            XCTAssertEqual(decibels.firstIndex(of: decibels.max()!), band, "\(frequency) Hz")
+            XCTAssertEqual(decibels[band], 0, accuracy: 3, "full-scale sine reads about 0 dB")
+        }
+        XCTAssertTrue(spectrum.decibels([Float](repeating: 0, count: 1024), sampleRate: 48_000).allSatisfy { $0 < -100 })
+    }
+
+    func testBandMeterRisesFastAndFallsSlowly() {
+        var meter = BandMeter(count: 1)
+        let up = meter.update([0])[0]
+        XCTAssertGreaterThan(up, 0.6)
+        let down = meter.update([-40])[0]
+        XCTAssertLessThan(down, up)
+        XCTAssertGreaterThan(down, up * 0.7)
+        for _ in 0..<40 { _ = meter.update([-40]) }
+        XCTAssertLessThan(meter.levels[0], 0.05)
+    }
 }

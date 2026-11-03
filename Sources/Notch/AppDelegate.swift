@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         services = [
             bridge,
             MusicService(store: store),
+            AudioTap(store: store),
             WeatherService(store: store, config: config),
             PeekService(store: store),
             ApprovalHotKeys(store: store),

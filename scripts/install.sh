@@ -25,6 +25,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSAppleEventsUsageDescription</key><string>Notch reads and controls Spotify, and switches the Mac between dark and light.</string>
+  <key>NSAudioCaptureUsageDescription</key><string>Notch listens to Spotify's output to animate the equalizer. Nothing is recorded.</string>
 </dict></plist>
 PLIST
 # A real identity keeps macOS's Automation approvals across rebuilds.
