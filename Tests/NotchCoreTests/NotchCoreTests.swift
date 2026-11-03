@@ -32,6 +32,17 @@ final class NotchCoreTests: XCTestCase {
         XCTAssertEqual(event("Bash", "{}").project, "proj")
     }
 
+    func testPromptsWithMoreThanYesOrNoStayInClaude() {
+        XCTAssertFalse(event("AskUserQuestion", "{}").isApprovableFromNotch)
+        XCTAssertFalse(event("ExitPlanMode", "{}").isApprovableFromNotch)
+        XCTAssertTrue(event("Bash", "{}").isApprovableFromNotch)
+    }
+
+    func testChangedFileOnlyForEditingTools() {
+        XCTAssertEqual(event("Edit", #"{"file_path":"/f"}"#).changedFile, "/f")
+        XCTAssertNil(event("Read", #"{"file_path":"/f"}"#).changedFile)
+    }
+
     func testBadPayloadIsRejected() {
         XCTAssertNil(ClaudeEvent(json: Data("nope".utf8)))
         XCTAssertNil(ClaudeEvent(json: Data("{}".utf8)))

@@ -20,6 +20,18 @@ public struct ClaudeEvent {
 
     public var project: String { (cwd as NSString).lastPathComponent }
 
+    /// False for tools whose prompt carries more than a yes or no: a plain Allow
+    /// would answer a question with nothing, or wave through an unread plan.
+    public var isApprovableFromNotch: Bool {
+        !["AskUserQuestion", "ExitPlanMode"].contains(toolName ?? "")
+    }
+
+    /// The file a successful tool call changed, if any.
+    public var changedFile: String? {
+        guard ["Edit", "MultiEdit", "Write", "NotebookEdit"].contains(toolName ?? "") else { return nil }
+        return (toolInput["file_path"] ?? toolInput["notebook_path"]) as? String
+    }
+
     /// What is being approved, in full. The card scrolls rather than truncating.
     public var summary: String {
         let tool = toolName ?? "Tool"
