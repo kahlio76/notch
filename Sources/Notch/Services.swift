@@ -368,7 +368,13 @@ final class ApprovalHotKeys {
             var id = EventHotKeyID()
             GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &id)
-            ApprovalHotKeys.current?.store.decide(allow: id.id == 1)
+            guard let store = ApprovalHotKeys.current?.store else { return noErr }
+            switch id.id {
+            case 1: store.decide(allow: true)
+            case 2: store.currentQuestion == nil ? store.decide(allow: false) : store.passToClaude()
+            case 3: store.submitPicks()
+            default: store.choose(option: Int(id.id) - 11)
+            }
             return noErr
         }, 1, &spec, nil, nil)
         subscription = store.$requests.sink { [weak self] requests in self?.sync(active: !requests.isEmpty) }
@@ -377,7 +383,9 @@ final class ApprovalHotKeys {
     private func sync(active: Bool) {
         if active, refs.isEmpty {
             let modifiers = UInt32(controlKey | optionKey)
-            for (id, key) in [(UInt32(1), kVK_ANSI_Y), (UInt32(2), kVK_ANSI_N)] {
+            let keys = [(UInt32(1), kVK_ANSI_Y), (2, kVK_ANSI_N), (3, kVK_Return),
+                        (11, kVK_ANSI_1), (12, kVK_ANSI_2), (13, kVK_ANSI_3), (14, kVK_ANSI_4)]
+            for (id, key) in keys {
                 var ref: EventHotKeyRef?
                 let hotKeyID = EventHotKeyID(signature: OSType(0x4E544348), id: id)
                 if RegisterEventHotKey(UInt32(key), modifiers, hotKeyID, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {

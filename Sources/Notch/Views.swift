@@ -435,7 +435,9 @@ struct RequestCard: View {
 
     var body: some View {
         let matte = Matte(scheme: scheme)
-        if let request = store.requests.first {
+        if let request = store.requests.first, let question = store.currentQuestion {
+            QuestionCard(store: store, request: request, question: question)
+        } else if let request = store.requests.first {
             HStack(alignment: .center, spacing: 14) {
                 PixelGrid(state: .waiting, cell: 6, gap: 2)
                 VStack(alignment: .leading, spacing: 3) {
@@ -461,10 +463,98 @@ struct RequestCard: View {
     }
 }
 
+/// Claude's multiple-choice question, one at a time, with its options as buttons.
+struct QuestionCard: View {
+    @ObservedObject var store: NotchStore
+    let request: ApprovalRequest
+    let question: ClaudeQuestion
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let matte = Matte(scheme: scheme)
+        let count = request.questions.count
+        let caption = [question.header, count > 1 ? "\(store.questionStep + 1) of \(count)" : "", request.project]
+            .filter { !$0.isEmpty }.joined(separator: "  ·  ")
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                PixelGrid(state: .waiting, cell: 4, gap: 1.5).padding(.top, 3)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(caption).font(.system(size: 11, weight: .medium)).foregroundStyle(matte.tertiary).lineLimit(1)
+                    Text(question.question)
+                        .font(.system(size: 14, weight: .semibold)).foregroundStyle(matte.primary)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                HStack(spacing: 7) {
+                    if question.multiSelect {
+                        DecisionButton(title: "Submit", keys: "⌃⌥↩", prominent: true, width: 124) { store.submitPicks() }
+                            .opacity(store.picked.isEmpty ? 0.4 : 1)
+                    }
+                    DecisionButton(title: "In Claude", keys: "⌃⌥N", prominent: false, width: 134) { store.passToClaude() }
+                }
+            }
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                ForEach(question.options.indices, id: \.self) { index in
+                    OptionButton(number: index + 1, option: question.options[index], checkbox: question.multiSelect,
+                                 selected: store.picked.contains(index)) { store.choose(option: index) }
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 12)
+    }
+}
+
+struct OptionButton: View {
+    let number: Int
+    let option: ClaudeQuestion.Option
+    let checkbox: Bool
+    let selected: Bool
+    let action: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let matte = Matte(scheme: scheme)
+        let dark = scheme == .dark
+        let text = selected ? (dark ? Color.black : Color.white) : matte.primary
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Group {
+                    if checkbox {
+                        Image(systemName: selected ? "checkmark.square.fill" : "square").font(.system(size: 13))
+                    } else {
+                        Text("\(number)").font(.system(size: 11, weight: .bold, design: .rounded))
+                            .frame(width: 18, height: 18)
+                            .background(Circle().fill(text.opacity(0.12)))
+                    }
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(option.label).font(.system(size: 12.5, weight: .semibold))
+                    if !option.detail.isEmpty {
+                        Text(option.detail).font(.system(size: 10.5)).opacity(0.6)
+                    }
+                }
+                .lineLimit(1)
+                Spacer(minLength: 0)
+                Text("⌃⌥\(number)").font(.system(size: 10)).opacity(0.4)
+            }
+            .foregroundStyle(text)
+            .padding(.horizontal, 11)
+            .frame(height: 38)
+            .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(selected ? (dark ? Color.white : Color.black) : matte.card))
+            .contentShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .help(option.detail)
+    }
+}
+
 struct DecisionButton: View {
     let title: String
     let keys: String
     let prominent: Bool
+    var width: CGFloat = 112
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
 
@@ -480,7 +570,7 @@ struct DecisionButton: View {
             }
             .foregroundStyle(text)
             .padding(.horizontal, 13)
-            .frame(width: 112, height: 30)
+            .frame(width: width, height: 30)
             .background(Capsule().fill(fill))
             .contentShape(Capsule())
         }

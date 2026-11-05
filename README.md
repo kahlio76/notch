@@ -14,8 +14,13 @@ Settings (city, coordinates, units, pinned apps) are in `~/.notch/config.json`; 
 Lyrics come from lrclib.net and weather from open-meteo.com. Neither needs a key.
 
 `notch-hook` never decides anything on its own. If the app isn't running or nobody answers within
-110 s, it exits silently and Claude Code shows its usual prompt. AskUserQuestion and ExitPlanMode
-are always left to Claude Code, because they need more than a yes or no.
+110 s, it exits silently and Claude Code shows its usual prompt.
+
+When Claude asks a multiple-choice question (AskUserQuestion), the notch shows each question with its
+options as buttons, also on ⌃⌥1 to ⌃⌥4. Multi-select questions take ⌃⌥↩ to submit. The picks go back
+as the tool's `answers`, the same way Claude Code's own prompt fills them in. "In Claude" (⌃⌥N) hands
+the question back, for typing an answer that isn't on the list. Questions with more than four options,
+and ExitPlanMode, always stay in Claude Code.
 
 The first install keeps the original settings at `~/.claude/settings.json.before-notch`.
 

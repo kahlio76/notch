@@ -38,6 +38,32 @@ final class NotchCoreTests: XCTestCase {
         XCTAssertTrue(event("Bash", "{}").isApprovableFromNotch)
     }
 
+    func testParsesQuestions() {
+        let input = #"{"questions":[{"question":"Which color?","header":"Color","multiSelect":true,"options":[{"label":"Red","description":"Warm"},{"label":"Blue"}]}]}"#
+        let questions = event("AskUserQuestion", input).questions
+        XCTAssertEqual(questions.count, 1)
+        XCTAssertEqual(questions[0].question, "Which color?")
+        XCTAssertEqual(questions[0].options.map(\.label), ["Red", "Blue"])
+        XCTAssertEqual(questions[0].options[0].detail, "Warm")
+        XCTAssertTrue(questions[0].multiSelect)
+        XCTAssertTrue(event("Bash", input).questions.isEmpty)
+        let tooMany = #"{"questions":[{"question":"q","options":[{"label":"a"},{"label":"b"},{"label":"c"},{"label":"d"},{"label":"e"}]}]}"#
+        XCTAssertTrue(event("AskUserQuestion", tooMany).questions.isEmpty)
+        XCTAssertTrue(event("AskUserQuestion", #"{"questions":[{"question":"q"}]}"#).questions.isEmpty)
+    }
+
+    func testQuestionDecisionKeepsInputAndAddsAnswers() throws {
+        let data = questionDecision(toolInput: ["questions": [["question": "Which color?"]]], answers: ["Which color?": "Blue"])
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let output = try XCTUnwrap(object["hookSpecificOutput"] as? [String: Any])
+        let decision = try XCTUnwrap(output["decision"] as? [String: Any])
+        XCTAssertEqual(decision["behavior"] as? String, "allow")
+        let input = try XCTUnwrap(decision["updatedInput"] as? [String: Any])
+        XCTAssertEqual(input["answers"] as? [String: String], ["Which color?": "Blue"])
+        XCTAssertNotNil(input["questions"])
+        XCTAssertEqual(ClaudeQuestion.answer(["Red", "Blue"]), "Red, Blue")
+    }
+
     func testChangedFileOnlyForEditingTools() {
         XCTAssertEqual(event("Edit", #"{"file_path":"/f"}"#).changedFile, "/f")
         XCTAssertNil(event("Read", #"{"file_path":"/f"}"#).changedFile)

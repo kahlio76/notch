@@ -35,7 +35,11 @@ struct ApprovalRequest: Identifiable {
     let sessionID: String
     let summary: String
     let project: String
+    /// Set when Claude is asking multiple-choice questions rather than for permission.
+    var questions: [ClaudeQuestion] = []
     let respond: (Bool) -> Void
+    var answer: ([String: String]) -> Void = { _ in }
+    /// Hands the prompt back to Claude's own window.
     let cancel: () -> Void
 }
 
@@ -83,6 +87,10 @@ final class NotchStore: ObservableObject {
     @Published var requests: [ApprovalRequest] = []
     @Published var done: DoneBanner?
     @Published var sessions: [String: ClaudeSession] = [:]
+    /// Progress through the front request's questions.
+    @Published var questionStep = 0
+    @Published var picked: Set<Int> = []
+    private var answers: [String: String] = [:]
     private var frontShownAt = Date.distantPast
     private var doneTimer: Timer?
 
@@ -110,7 +118,10 @@ final class NotchStore: ObservableObject {
             let slider: CGFloat = activeSlider == nil ? 0 : 32
             let lyricsArea: CGFloat = track == nil ? 0 : 50
             return CGSize(width: Self.panelWidth, height: notchHeight + 8 + 104 + slider + lyricsArea + 14)
-        case .request: return CGSize(width: Self.panelWidth, height: notchHeight + 118)
+        case .request:
+            guard let question = currentQuestion else { return CGSize(width: Self.panelWidth, height: notchHeight + 118) }
+            let rows = CGFloat((question.options.count + 1) / 2)
+            return CGSize(width: Self.panelWidth, height: notchHeight + 92 + rows * 46)
         case .done: return CGSize(width: Self.panelWidth, height: notchHeight + 76)
         }
     }
@@ -185,15 +196,66 @@ final class NotchStore: ObservableObject {
     }
 
     func add(_ request: ApprovalRequest) {
-        if requests.isEmpty { frontShownAt = Date() }
+        if requests.isEmpty { newFront() }
         requests.append(request)
     }
 
     func remove(requestID: UUID) {
         let wasFront = requests.first?.id == requestID
         requests.removeAll { $0.id == requestID }
-        if wasFront { frontShownAt = Date() }
+        if wasFront { newFront() }
     }
+
+    private func newFront() {
+        frontShownAt = Date()
+        questionStep = 0
+        picked = []
+        answers = [:]
+    }
+
+    /// The question on screen, if the front request is asking questions.
+    var currentQuestion: ClaudeQuestion? {
+        guard let questions = requests.first?.questions, questionStep < questions.count else { return nil }
+        return questions[questionStep]
+    }
+
+    /// Picks an option. On a multi-select question it toggles instead, and `submitPicks` moves on.
+    func choose(option index: Int) {
+        guard let question = currentQuestion, index < question.options.count, settled else { return }
+        if question.multiSelect {
+            if picked.contains(index) { picked.remove(index) } else { picked.insert(index) }
+        } else {
+            record(question, [question.options[index].label])
+        }
+    }
+
+    func submitPicks() {
+        guard let question = currentQuestion, question.multiSelect, !picked.isEmpty, settled else { return }
+        record(question, picked.sorted().map { question.options[$0].label })
+    }
+
+    /// Leaves the prompt for Claude's own window, e.g. to type an answer that isn't on the list.
+    func passToClaude() {
+        guard let front = requests.first, settled else { return }
+        front.cancel()
+        remove(requestID: front.id)
+    }
+
+    private func record(_ question: ClaudeQuestion, _ labels: [String]) {
+        guard let front = requests.first else { return }
+        answers[question.question] = ClaudeQuestion.answer(labels)
+        if questionStep + 1 < front.questions.count {
+            questionStep += 1
+            picked = []
+            // A quick double click shouldn't also answer the next question.
+            frontShownAt = Date()
+        } else {
+            front.answer(answers)
+            remove(requestID: front.id)
+        }
+    }
+
+    private var settled: Bool { Date().timeIntervalSince(frontShownAt) > 0.4 }
 
     private func cancelRequests(for sessionID: String) {
         for request in requests where request.sessionID == sessionID {
@@ -205,7 +267,7 @@ final class NotchStore: ObservableObject {
     /// Ignores input in the first moments a card is up, so a click or keypress
     /// meant for something else can't approve a request that just appeared.
     func decide(allow: Bool) {
-        guard let front = requests.first, Date().timeIntervalSince(frontShownAt) > 0.4 else { return }
+        guard let front = requests.first, front.questions.isEmpty, settled else { return }
         front.respond(allow)
         remove(requestID: front.id)
     }

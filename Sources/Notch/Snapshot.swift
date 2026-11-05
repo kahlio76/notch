@@ -32,6 +32,13 @@ enum Snapshot {
         let request = demo()
         request.add(ApprovalRequest(id: UUID(), sessionID: "s", summary: "vercel deploy --prod && rm -rf ./build && echo a much longer command that has to wrap onto more than one line so it scrolls", project: "portfolio", respond: { _ in }, cancel: {}))
         cases.append(("request", request))
+        let question = demo()
+        let ask = #"{"hook_event_name":"PermissionRequest","session_id":"s","cwd":"/a/portfolio","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"Should I deploy the new homepage now, or wait for the image fixes?","header":"Deploy","multiSelect":false,"options":[{"label":"Deploy now","description":"Ship it; images follow later"},{"label":"Wait","description":"Hold until the fixes land"},{"label":"Preview only","description":"Deploy to a preview URL"}]},{"question":"Anything else?","header":"More","options":[{"label":"No"}]}]}}"#
+        if let event = ClaudeEvent(json: Data(ask.utf8)) {
+            question.add(ApprovalRequest(id: UUID(), sessionID: "s", summary: event.summary, project: event.project,
+                                         questions: event.questions, respond: { _ in }, cancel: {}))
+        }
+        cases.append(("question", question))
         let done = demo(); done.done = DoneBanner(title: "Done in 10 s", detail: "2 files changed", project: "portfolio")
         cases.append(("done", done))
         let peek = demo(); peek.peek = Peek(symbol: "bolt.fill", icon: nil, title: "Charging", detail: "82%")

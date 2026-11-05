@@ -26,6 +26,14 @@ public struct ClaudeEvent {
         !["AskUserQuestion", "ExitPlanMode"].contains(toolName ?? "")
     }
 
+    /// Claude's multiple-choice questions, when this is an AskUserQuestion the notch can show.
+    /// Empty if anything about them doesn't fit, and then the question stays in Claude.
+    public var questions: [ClaudeQuestion] {
+        guard toolName == "AskUserQuestion", let raw = toolInput["questions"] as? [[String: Any]], !raw.isEmpty else { return [] }
+        let parsed = raw.compactMap(ClaudeQuestion.init)
+        return parsed.count == raw.count ? parsed : []
+    }
+
     /// The file a successful tool call changed, if any.
     public var changedFile: String? {
         guard ["Edit", "MultiEdit", "Write", "NotebookEdit"].contains(toolName ?? "") else { return nil }
@@ -65,6 +73,45 @@ public func permissionDecision(allow: Bool) -> Data {
     if !allow { decision["message"] = "Denied from the notch." }
     let output: [String: Any] = ["hookSpecificOutput": ["hookEventName": "PermissionRequest", "decision": decision]]
     return (try? JSONSerialization.data(withJSONObject: output, options: [.sortedKeys])) ?? Data()
+}
+
+/// Answers an AskUserQuestion: Claude Code reads the picks from the tool input's `answers`,
+/// keyed by question text, exactly as its own prompt fills them in.
+public func questionDecision(toolInput: [String: Any], answers: [String: String]) -> Data {
+    var input = toolInput
+    input["answers"] = answers
+    let decision: [String: Any] = ["behavior": "allow", "updatedInput": input]
+    let output: [String: Any] = ["hookSpecificOutput": ["hookEventName": "PermissionRequest", "decision": decision]]
+    return (try? JSONSerialization.data(withJSONObject: output, options: [.sortedKeys])) ?? Data()
+}
+
+public struct ClaudeQuestion: Equatable {
+    public struct Option: Equatable {
+        public let label: String
+        public let detail: String
+    }
+
+    public let question: String
+    public let header: String
+    public let options: [Option]
+    public let multiSelect: Bool
+
+    /// The notch has room for four options, which is also the most Claude offers.
+    init?(_ object: [String: Any]) {
+        guard let question = object["question"] as? String,
+              let options = object["options"] as? [[String: Any]], (1...4).contains(options.count) else { return nil }
+        let parsed = options.compactMap { option in
+            (option["label"] as? String).map { Option(label: $0, detail: option["description"] as? String ?? "") }
+        }
+        guard parsed.count == options.count else { return nil }
+        self.question = question
+        header = object["header"] as? String ?? ""
+        self.options = parsed
+        multiSelect = object["multiSelect"] as? Bool ?? false
+    }
+
+    /// Several picks go back as one string, the way Claude Code's own prompt joins them.
+    public static func answer(_ labels: [String]) -> String { labels.joined(separator: ", ") }
 }
 
 public func doneDuration(_ seconds: Double) -> String {

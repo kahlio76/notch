@@ -67,7 +67,7 @@ final class ClaudeBridge {
             close(fd)
             return
         }
-        guard event.name == "PermissionRequest", event.isApprovableFromNotch else {
+        guard event.name == "PermissionRequest", event.isApprovableFromNotch || !event.questions.isEmpty else {
             close(fd)
             DispatchQueue.main.async { self.store.handle(event) }
             return
@@ -92,7 +92,10 @@ final class ClaudeBridge {
             close(fd)
         }
         let request = ApprovalRequest(id: id, sessionID: event.sessionID, summary: event.summary, project: event.project,
-                                      respond: { finish(permissionDecision(allow: $0)) }, cancel: { finish(nil) })
+                                      questions: event.questions,
+                                      respond: { finish(permissionDecision(allow: $0)) },
+                                      answer: { finish(questionDecision(toolInput: event.toolInput, answers: $0)) },
+                                      cancel: { finish(nil) })
         DispatchQueue.main.async { self.store.add(request) }
 
         // The hook disappears if it times out or if the prompt was answered in the terminal.
