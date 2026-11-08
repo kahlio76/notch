@@ -41,6 +41,11 @@ enum Snapshot {
         cases.append(("question", question))
         let done = demo(); done.done = DoneBanner(title: "Done in 10 s", detail: "2 files changed", project: "portfolio")
         cases.append(("done", done))
+        let alert = demo()
+        let plist = try? PropertyListSerialization.data(fromPropertyList: ["app": "com.apple.mobilesms", "date": Date().timeIntervalSinceReferenceDate,
+            "req": ["titl": "Sam", "body": "are we still on for dinner at 7? i can drive if you want"]], format: .binary, options: 0)
+        if let plist, let note = SystemNotification(id: 1, plist: plist) { alert.alert = NotchAlert(note) }
+        cases.append(("alert", alert))
         let peek = demo(); peek.peek = Peek(symbol: "bolt.fill", icon: nil, title: "Charging", detail: "82%")
         cases.append(("peek", peek))
         let wings = demo(); wings.sessions["s"] = ClaudeSession(project: "x", startedAt: Date())

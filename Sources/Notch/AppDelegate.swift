@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AudioTap(store: store),
             WeatherService(store: store, config: config),
             PeekService(store: store),
+            NotificationService(store: store),
             ApprovalHotKeys(store: store),
         ]
     }

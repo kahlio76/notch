@@ -157,6 +157,8 @@ struct PanelView: View {
             switch store.surface {
             case .request:
                 RequestCard(store: store).transition(.notchContent)
+            case .alert:
+                AlertCard(store: store).transition(.notchContent)
             case .done:
                 DoneCard(store: store).transition(.notchContent)
             default:
@@ -575,6 +577,48 @@ struct DecisionButton: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// A macOS notification, dropped from the notch instead of sliding in from the side.
+struct AlertCard: View {
+    @ObservedObject var store: NotchStore
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let matte = Matte(scheme: scheme)
+        if let alert = store.alert {
+            HStack(spacing: 14) {
+                Group {
+                    if let icon = alert.icon {
+                        Image(nsImage: icon).resizable().interpolation(.high)
+                    } else {
+                        Image(systemName: "bell.fill").font(.system(size: 22)).foregroundStyle(matte.secondary)
+                    }
+                }
+                .frame(width: 38, height: 38)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(alert.appName).font(.system(size: 11, weight: .medium)).foregroundStyle(matte.tertiary)
+                    Text(alert.headline).font(.system(size: 14, weight: .semibold)).foregroundStyle(matte.primary)
+                    if !alert.detail.isEmpty {
+                        Text(alert.detail).font(.system(size: 12)).foregroundStyle(matte.secondary)
+                    }
+                }
+                .lineLimit(1)
+                Spacer(minLength: 0)
+                Button { store.dismissAlert() } label: {
+                    Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(matte.tertiary)
+                        .frame(width: 22, height: 22).background(Circle().fill(matte.card))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+            .contentShape(Rectangle())
+            .onTapGesture { store.openAlert() }
+            // The id makes a queued notification swap in with the same transition as the first.
+            .id(alert.id)
+        }
     }
 }
 

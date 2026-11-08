@@ -2,7 +2,7 @@ import AppKit
 import Combine
 import NotchCore
 
-enum Surface: Equatable { case idle, wings, peek, widgets, request, done }
+enum Surface: Equatable { case idle, wings, peek, widgets, request, alert, done }
 enum ControlSlider: Equatable { case volume, brightness }
 
 struct Track: Equatable {
@@ -73,6 +73,9 @@ final class NotchStore: ObservableObject {
 
     @Published var peek: Peek?
     private var peekQueue: [Peek] = []
+    @Published var alert: NotchAlert?
+    private var alertQueue: [NotchAlert] = []
+    private var alertTimer: Timer?
 
     @Published var track: Track?
     @Published var isPlaying = false
@@ -102,6 +105,7 @@ final class NotchStore: ObservableObject {
     var surface: Surface {
         if !requests.isEmpty { return .request }
         if hovering { return .widgets }
+        if alert != nil { return .alert }
         if done != nil { return .done }
         if peek != nil { return .peek }
         if claudeWorking || (track != nil && isPlaying) { return .wings }
@@ -122,11 +126,12 @@ final class NotchStore: ObservableObject {
             guard let question = currentQuestion else { return CGSize(width: Self.panelWidth, height: notchHeight + 118) }
             let rows = CGFloat((question.options.count + 1) / 2)
             return CGSize(width: Self.panelWidth, height: notchHeight + 92 + rows * 46)
+        case .alert: return CGSize(width: Self.panelWidth, height: notchHeight + 80)
         case .done: return CGSize(width: Self.panelWidth, height: notchHeight + 76)
         }
     }
 
-    var isPanel: Bool { [.widgets, .request, .done].contains(surface) }
+    var isPanel: Bool { [.widgets, .request, .alert, .done].contains(surface) }
     /// How far the shape flares out where it meets the top of the screen.
     var topRadius: CGFloat { isPanel ? 19 : 6 }
     var bottomRadius: CGFloat { isPanel ? 24 : 14 }
@@ -143,6 +148,39 @@ final class NotchStore: ObservableObject {
             guard let self else { return }
             self.peek = nil
             if !self.peekQueue.isEmpty { self.present(self.peekQueue.removeFirst()) }
+        }
+    }
+
+    // MARK: Notifications
+
+    /// Shows a notification for a few seconds. A burst waits its turn, keeping only the newest few.
+    func show(alert new: NotchAlert) {
+        guard alert == nil else {
+            alertQueue.append(new)
+            if alertQueue.count > 3 { alertQueue.removeFirst() }
+            return
+        }
+        alert = new
+        alertTimer?.invalidate()
+        alertTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in self?.dismissAlert() }
+    }
+
+    func openAlert() {
+        guard let alert else { return }
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: alert.bundleID) {
+            NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+        }
+        dismissAlert()
+    }
+
+    /// The panel folds back up before the next one drops, so each reads as its own arrival.
+    func dismissAlert() {
+        alertTimer?.invalidate()
+        alert = nil
+        guard !alertQueue.isEmpty else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
+            guard let self, self.alert == nil, !self.alertQueue.isEmpty else { return }
+            self.show(alert: self.alertQueue.removeFirst())
         }
     }
 

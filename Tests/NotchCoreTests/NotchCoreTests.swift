@@ -123,4 +123,25 @@ final class NotchCoreTests: XCTestCase {
         for _ in 0..<40 { _ = meter.update([-40]) }
         XCTAssertLessThan(meter.levels[0], 0.05)
     }
+
+    private func notificationPlist(_ request: [String: Any], app: String = "com.hnc.discord") throws -> Data {
+        try PropertyListSerialization.data(fromPropertyList: ["app": app, "date": 815_804_762.5, "req": request],
+                                           format: .binary, options: 0)
+    }
+
+    func testReadsNotificationRecords() throws {
+        let note = try XCTUnwrap(SystemNotification(id: 7, plist: notificationPlist(["titl": "Sam", "subt": "#general", "body": "you up?"])))
+        XCTAssertEqual(note.id, 7)
+        XCTAssertEqual(note.bundleID, "com.hnc.discord")
+        XCTAssertEqual(note.headline, "Sam")
+        XCTAssertEqual(note.detail, "#general — you up?")
+        XCTAssertEqual(note.date.timeIntervalSinceReferenceDate, 815_804_762.5)
+
+        let untitled = try XCTUnwrap(SystemNotification(id: 8, plist: notificationPlist(["subt": "Reminder", "body": "Quiz at 3"])))
+        XCTAssertEqual(untitled.headline, "Reminder")
+        XCTAssertEqual(untitled.detail, "Quiz at 3")
+
+        XCTAssertNil(SystemNotification(id: 9, plist: try notificationPlist([:])))
+        XCTAssertNil(SystemNotification(id: 10, plist: Data("junk".utf8)))
+    }
 }
