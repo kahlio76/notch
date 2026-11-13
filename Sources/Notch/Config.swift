@@ -7,6 +7,8 @@ struct Config: Codable {
     var longitude = -122.032
     var fahrenheit = true
     var pinnedApps = ["com.apple.Safari", "com.spotify.client", "md.obsidian", "com.anthropic.claudefordesktop"]
+    /// Optional so configs written before this key existed still decode. Missing means on.
+    var notifications: Bool?
 
     static let directory = NSHomeDirectory() + "/.notch"
     static let path = directory + "/config.json"

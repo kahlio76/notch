@@ -26,7 +26,8 @@ Notifications can come down from the notch instead of sliding in from the side. 
 Disk Access so it can read the database Notification Center keeps, then in System Settings →
 Notifications set an app's alert style to None while leaving "Show in Notification Center" on.
 Clicking one opens its app. macOS writes each notification a few seconds after it arrives, so they
-land in the notch a moment later than a banner would.
+land in the notch a moment later than a banner would. To turn this off, set `"notifications": false`
+in `~/.notch/config.json` and restart Notch.
 
 The first install keeps the original settings at `~/.claude/settings.json.before-notch`.
 
