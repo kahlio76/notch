@@ -52,7 +52,7 @@ enum Snapshot {
         cases.append(("wings", wings))
 
         for (name, store) in cases {
-            for (schemeName, scheme) in [("dark", ColorScheme.dark), ("light", ColorScheme.light)] {
+            for (schemeName, scheme) in [("dark", ColorScheme.dark)] {
                 let size = store.surfaceSize
                 let view = RootView(store: store)
                     .environment(\.colorScheme, scheme)
